@@ -17,7 +17,13 @@ const Dashboard = () => {
         <section className="welcome-row">
           <div>
             <div className="eyebrow">
-              <span className="eyebrow-line"></span>THURSDAY, OCTOBER 15, 2026
+              <span className="eyebrow-line"></span>
+              {new Date().toLocaleDateString("en-US", {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              }).toUpperCase()}
             </div>
             <h1>
               Good morning, Jordan<span>.</span>

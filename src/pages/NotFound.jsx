@@ -1,8 +1,16 @@
-import { Link } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
 
 const NotFound = () => {
+  const location = useLocation();
+
+  // If a legacy URL with .html was accessed, redirect to the clean canonical route
+  if (location.pathname.endsWith(".html")) {
+    const cleanPath = location.pathname.replace(/\.html$/, "") || "/";
+    const target = cleanPath === "/index" ? "/" : cleanPath;
+    return <Navigate to={`${target}${location.search}${location.hash}`} replace />;
+  }
   const breadcrumb = (
     <>
       <span>Workspace</span>

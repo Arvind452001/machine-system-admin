@@ -1,6 +1,20 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const Header = ({ onToggleSidebar, isSidebarOpen, breadcrumb }) => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = (e) => {
+    e.preventDefault();
+    logout();
+    navigate("/login");
+  };
+
+  const initials = user?.initials || (user?.name ? user.name.split(" ").map(n => n[0]).join("") : "JM");
+  const displayName = user?.name || "Jordan Miller";
+  const displayRole = user?.role || "Administrator";
+
   return (
     <header className="topbar">
       <button
@@ -33,16 +47,34 @@ const Header = ({ onToggleSidebar, isSidebarOpen, breadcrumb }) => {
         </Link>
         <details className="account-menu">
           <summary aria-label="Open account menu" className="avatar avatar-top">
-            JM
+            {initials}
           </summary>
           <div className="account-dropdown">
-            <strong>Jordan Miller</strong>
-            <small>Administrator</small>
+            <strong>{displayName}</strong>
+            <small>{displayRole}</small>
             <Link to="/profile">My profile</Link>
             <Link to="/settings">Settings</Link>
-            <Link className="account-logout" to="/login">
+            <button
+              type="button"
+              className="account-logout"
+              onClick={handleLogout}
+              style={{
+                display: "block",
+                width: "100%",
+                textAlign: "left",
+                background: "none",
+                border: "none",
+                padding: "8px 12px",
+                color: "#cf3c1b",
+                cursor: "pointer",
+                font: "inherit",
+                fontSize: "12px",
+                fontWeight: "600",
+                borderRadius: "4px",
+              }}
+            >
               Sign out
-            </Link>
+            </button>
           </div>
         </details>
       </div>

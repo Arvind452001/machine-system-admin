@@ -1,21 +1,52 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { DUMMY_CREDENTIALS } from "../services/authService";
 
 const SignIn = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  // Quick helper for easy demo testing
+  const handleUseDemo = (demoAccount) => {
+    setEmail(demoAccount.email);
+    setPassword(demoAccount.password);
+    setError("");
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate("/dashboard");
+    setError("");
+
+    if (!email.trim() || !password.trim()) {
+      setError("Please enter both work email and password.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await login({ email, password, remember });
+      // Redirect to original attempted page, or default to dashboard
+      const destination = location.state?.from?.pathname || "/dashboard";
+      navigate(destination, { replace: true });
+    } catch (err) {
+      setError(err.message || "Invalid work email or password. Access denied.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <main className="login-page">
       <section className="login-brand-panel">
-        <Link aria-label="MACHINE Systems home" className="brand" to="/dashboard">
+        <Link aria-label="MACHINE Systems home" className="brand" to="/login">
           <span className="brand-icon">
             <i className="bi bi-asterisk"></i>
           </span>
@@ -51,6 +82,18 @@ const SignIn = () => {
           </div>
           <h2>Welcome back</h2>
           <p>Sign in to manage your configurator workspace.</p>
+
+          {/* Access Denied / Validation Error Alert */}
+          {error && (
+            <div className="login-error-alert" role="alert">
+              <i className="bi bi-shield-x"></i>
+              <div className="login-error-content">
+                <strong>Access Denied</strong>
+                <span>{error}</span>
+              </div>
+            </div>
+          )}
+
           <form className="login-form" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="email">Work email</label>
@@ -61,7 +104,12 @@ const SignIn = () => {
                 placeholder="name@company.com"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                className={error ? "input-has-error" : ""}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) setError("");
+                }}
+                disabled={isSubmitting}
               />
             </div>
             <div>
@@ -73,7 +121,12 @@ const SignIn = () => {
                 placeholder="Enter your password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                className={error ? "input-has-error" : ""}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (error) setError("");
+                }}
+                disabled={isSubmitting}
               />
             </div>
             <div className="login-form-row">
@@ -83,14 +136,26 @@ const SignIn = () => {
                   type="checkbox"
                   checked={remember}
                   onChange={(e) => setRemember(e.target.checked)}
+                  disabled={isSubmitting}
                 />{" "}
                 Remember me
               </label>
             </div>
-            <button className="login-submit" type="submit">
-              Sign in <i className="bi bi-arrow-right"></i>
+            <button className="login-submit" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <span className="spinner-inline"></span> Verifying...
+                </>
+              ) : (
+                <>
+                  Sign in <i className="bi bi-arrow-right"></i>
+                </>
+              )}
             </button>
           </form>
+
+       
+
           <div className="login-support">
             Having trouble signing in?{" "}
             <a href="mailto:support@forgeworks.example">Contact support</a>

@@ -1,68 +1,56 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
+  const { user } = useAuth();
 
-  const isOverviewActive =
-    location.pathname === "/dashboard" ||
-    location.pathname === "/dashboard.html";
+  const initials = user?.initials || (user?.name ? user.name.split(" ").map(n => n[0]).join("") : "JM");
+  const displayName = user?.name || "Jordan Miller";
+  const displayRole = user?.role || "Administrator";
+
+  const currentPath = location.pathname;
+
+  const isOverviewActive = currentPath === "/dashboard";
 
   const isMachinesActive = [
     "/machines",
-    "/machines.html",
     "/add-machine",
-    "/add-machine.html",
     "/machine-details",
-    "/machine-details.html",
     "/cr80-details",
-    "/cr80-details.html",
     "/mx220-details",
-    "/mx220-details.html",
     "/pl600-details",
-    "/pl600-details.html",
-  ].includes(location.pathname);
+  ].includes(currentPath);
 
   const isOptionsActive = [
     "/options",
-    "/options.html",
     "/add-option",
-    "/add-option.html",
-  ].includes(location.pathname);
+  ].includes(currentPath);
 
   const isRenderingsActive = [
     "/renderings",
-    "/renderings.html",
     "/upload-rendering",
-    "/upload-rendering.html",
-  ].includes(location.pathname);
+  ].includes(currentPath);
 
   const isPricingActive = [
     "/pricing",
-    "/pricing.html",
     "/add-price-rule",
-    "/add-price-rule.html",
-  ].includes(location.pathname);
+  ].includes(currentPath);
 
   const isEnquiriesActive = [
     "/enquiries",
-    "/enquiries.html",
     "/enquiry-details",
-    "/enquiry-details.html",
-  ].includes(location.pathname);
+  ].includes(currentPath);
 
   const isQuotesActive = [
     "/quotes",
-    "/quotes.html",
     "/quote-details",
-    "/quote-details.html",
-  ].includes(location.pathname);
+  ].includes(currentPath);
 
   const isRepsActive = [
     "/representatives",
-    "/representatives.html",
     "/invite-representative",
-    "/invite-representative.html",
-  ].includes(location.pathname);
+  ].includes(currentPath);
 
   return (
     <aside className={`sidebar ${isOpen ? "is-open" : ""}`} id="sidebar">
@@ -166,10 +154,10 @@ const Sidebar = ({ isOpen, onClose }) => {
           </a>
         </div>
         <Link className="profile-link" to="/profile" onClick={onClose}>
-          <span className="avatar avatar-admin">JM</span>
+          <span className="avatar avatar-admin">{initials}</span>
           <span className="profile-copy">
-            <strong>Jordan Miller</strong>
-            <small>Administrator</small>
+            <strong>{displayName}</strong>
+            <small>{displayRole}</small>
           </span>
           <i className="bi bi-three-dots"></i>
         </Link>
