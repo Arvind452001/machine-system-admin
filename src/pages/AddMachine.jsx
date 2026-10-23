@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
+import { categoryService } from "../services/categoryService";
 
 const AddMachine = () => {
   const navigate = useNavigate();
+  const [categories, setCategories] = useState(() => categoryService.getCategoriesSync());
+  const [loadingCategories, setLoadingCategories] = useState(false);
+
   const [formData, setFormData] = useState({
     name: "",
     model: "",
@@ -13,6 +17,30 @@ const AddMachine = () => {
     description: "",
     status: "Draft",
   });
+
+  useEffect(() => {
+    const fetchCats = async () => {
+      try {
+        setLoadingCategories(true);
+        const data = await categoryService.getCategories();
+        setCategories(data);
+      } catch (err) {
+        console.error("Failed to fetch dynamic categories:", err);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    fetchCats();
+
+    const handleCatsUpdated = () => {
+      setCategories(categoryService.getCategoriesSync());
+    };
+
+    window.addEventListener("machine-categories-changed", handleCatsUpdated);
+    return () => {
+      window.removeEventListener("machine-categories-changed", handleCatsUpdated);
+    };
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -80,19 +108,39 @@ const AddMachine = () => {
                 />
               </label>
               <label className="form-field">
-                <span>Category *</span>
+                <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>Category *</span>
+                  <Link
+                    to="/add-category"
+                    style={{
+                      color: "var(--accent)",
+                      fontSize: "11px",
+                      fontWeight: "600",
+                    }}
+                    title="Create new category classification"
+                  >
+                    + New category
+                  </Link>
+                </span>
                 <select
                   name="category"
                   required
                   value={formData.category}
                   onChange={handleChange}
                 >
-                  <option value="">Select category</option>
-                  <option>Hydraulic forming</option>
-                  <option>Precision cutting</option>
-                  <option>Industrial mixing</option>
-                  <option>Material handling</option>
-                  <option>Other</option>
+                  <option value="">
+                    {loadingCategories ? "Loading categories..." : "Select category"}
+                  </option>
+                  {categories.map((cat) => (
+                    <option key={cat.id || cat.name} value={cat.name}>
+                      {cat.name} {cat.code ? `(${cat.code})` : ""} {cat.status === "Draft" ? "[Draft]" : ""}
+                    </option>
+                  ))}
+                  {categories.length === 0 && (
+                    <option value="" disabled>
+                      No categories available (click + New category above)
+                    </option>
+                  )}
                 </select>
               </label>
               <label className="form-field">

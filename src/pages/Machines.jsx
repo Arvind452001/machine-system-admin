@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
+import { categoryService } from "../services/categoryService";
 
 const initialMachines = [
   {
@@ -58,6 +59,27 @@ const Machines = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All statuses");
   const [categoryFilter, setCategoryFilter] = useState("All categories");
+  const [categories, setCategories] = useState(() => categoryService.getCategoriesSync());
+
+  useEffect(() => {
+    const loadCats = async () => {
+      try {
+        const data = await categoryService.getCategories();
+        setCategories(data);
+      } catch (e) {
+        console.error("Error loading categories in Machines:", e);
+      }
+    };
+    loadCats();
+
+    const handleUpdate = () => {
+      setCategories(categoryService.getCategoriesSync());
+    };
+    window.addEventListener("machine-categories-changed", handleUpdate);
+    return () => {
+      window.removeEventListener("machine-categories-changed", handleUpdate);
+    };
+  }, []);
 
   const breadcrumb = (
     <>
@@ -151,8 +173,11 @@ const Machines = () => {
               onChange={(e) => setCategoryFilter(e.target.value)}
             >
               <option>All categories</option>
-              <option value="Forming">Forming</option>
-              <option value="Cutting">Cutting</option>
+              {categories.map((cat) => (
+                <option key={cat.id || cat.name} value={cat.name}>
+                  {cat.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>

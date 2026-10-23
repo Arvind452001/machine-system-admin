@@ -1,9 +1,25 @@
+import { useState, useEffect } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { categoryService } from "../services/categoryService";
 
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const { user } = useAuth();
+  const [categoryCount, setCategoryCount] = useState(() => {
+    return categoryService.getCategoriesSync().length;
+  });
+
+  useEffect(() => {
+    const updateCount = () => {
+      setCategoryCount(categoryService.getCategoriesSync().length);
+    };
+
+    window.addEventListener("machine-categories-changed", updateCount);
+    return () => {
+      window.removeEventListener("machine-categories-changed", updateCount);
+    };
+  }, []);
 
   const initials = user?.initials || (user?.name ? user.name.split(" ").map(n => n[0]).join("") : "JM");
   const displayName = user?.name || "Jordan Miller";
@@ -21,6 +37,11 @@ const Sidebar = ({ isOpen, onClose }) => {
     "/mx220-details",
     "/pl600-details",
   ].includes(currentPath);
+
+  const isCategoriesActive = [
+    "/categories",
+    "/add-category",
+  ].includes(currentPath) || currentPath.startsWith("/edit-category");
 
   const isOptionsActive = [
     "/options",
@@ -86,6 +107,15 @@ const Sidebar = ({ isOpen, onClose }) => {
           <i className="bi bi-box-seam"></i>
           <span>Machines</span>
           <span className="nav-count">12</span>
+        </NavLink>
+        <NavLink
+          className={`side-link ${isCategoriesActive ? "active" : ""}`}
+          to="/categories"
+          onClick={onClose}
+        >
+          <i className="bi bi-tags"></i>
+          <span>Categories</span>
+          <span className="nav-count">{categoryCount}</span>
         </NavLink>
         <NavLink
           className={`side-link ${isOptionsActive ? "active" : ""}`}

@@ -927,3 +927,36 @@ body:has(.side-link.active[href="/representatives"]) .summary-item:nth-child(3):
     transform: translateY(0);
   }
 }
+
+body:has(.side-link.active[href="/categories"]) .summary-item:nth-child(1)::after {
+  -webkit-mask-image: url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/icons/tags.svg');
+  mask-image: url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/icons/tags.svg');
+}
+body:has(.side-link.active[href="/categories"]) .summary-item:nth-child(2)::after {
+  -webkit-mask-image: url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/icons/check2-circle.svg');
+  mask-image: url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/icons/check2-circle.svg');
+}
+body:has(.side-link.active[href="/categories"]) .summary-item:nth-child(3)::after {
+  -webkit-mask-image: url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/icons/diagram-3.svg');
+  mask-image: url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/icons/diagram-3.svg');
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
