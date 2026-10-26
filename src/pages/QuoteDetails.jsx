@@ -275,7 +275,7 @@ const QuoteDetails = () => {
         {editMode && (
           <div className="panel p-4 mb-4" style={{ background: "rgba(39, 98, 76, 0.05)", border: "1px solid var(--accent, #27624c)", borderRadius: "8px" }}>
             <h3 style={{ fontSize: "16px", fontWeight: "700", marginBottom: "12px" }}>
-              <i className="bi bi-sliders me-2"></i> Update Quote Details (PUT /api/v1/quotes/:id &amp; PATCH /status)
+              <i className="bi bi-sliders me-2"></i> Update Quote Details
             </h3>
             <div className="row g-3">
               <div className="col-md-4">
@@ -495,7 +495,7 @@ const QuoteDetails = () => {
             >
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <h3 style={{ fontSize: "18px", fontWeight: "700", margin: 0 }}>
-                  Create &amp; Issue Commercial Quote (POST /api/v1/quotes)
+                  Create &amp; Issue Commercial Quote
                 </h3>
                 <button
                   type="button"

@@ -198,7 +198,7 @@ const Profile = () => {
               </div>
               <div className="profile-panel-footer">
                 <span>
-                  <i className="bi bi-cloud-check text-success me-1"></i> Synchronized with backend PUT /api/v1/auth/update-profile
+                  <i className="bi bi-cloud-check text-success me-1"></i> Profile up to date
                 </span>
                 <button className="btn btn-accent" type="submit" disabled={saving}>
                   <i className="bi bi-check-lg"></i> {saving ? "Saving..." : "Save profile"}

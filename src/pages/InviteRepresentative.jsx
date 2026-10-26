@@ -85,7 +85,7 @@ const InviteRepresentative = () => {
             </div>
             <h1>Invite representative</h1>
             <p className="welcome-subtitle">
-              Add a sales teammate, set their territory coverage, and provision system access (POST /api/v1/users).
+              Add a sales teammate, set their territory coverage, and provision system access.
             </p>
           </div>
         </section>

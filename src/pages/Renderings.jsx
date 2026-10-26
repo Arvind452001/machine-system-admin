@@ -112,7 +112,7 @@ const Renderings = () => {
             </div>
             <h1>Renderings</h1>
             <p className="welcome-subtitle">
-              Manage machine 3D renders, schematic blueprints, and customer visual layers (GET /api/v1/renderings).
+              Manage machine 3D renders, schematic blueprints, and customer visual layers.
             </p>
           </div>
           <div className="header-actions">

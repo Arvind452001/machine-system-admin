@@ -223,7 +223,7 @@ const Representatives = () => {
                     <th>ROLE</th>
                     <th>COMPANY &amp; LOCATION</th>
                     <th>APPROVAL STATUS</th>
-                    <th>ACTIONS (PATCH /approve /reject)</th>
+                    <th>ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -256,7 +256,7 @@ const Representatives = () => {
                               type="button"
                               className="btn btn-sm btn-outline text-success"
                               onClick={() => handleApprove(u._id, u.name || u.email)}
-                              title="Approve user (PATCH /api/v1/users/:id/approve)"
+                              title="Approve user"
                             >
                               <i className="bi bi-check-lg"></i> Approve
                             </button>
@@ -264,7 +264,7 @@ const Representatives = () => {
                               type="button"
                               className="btn btn-sm btn-outline text-danger"
                               onClick={() => handleReject(u._id, u.name || u.email)}
-                              title="Reject user (PATCH /api/v1/users/:id/reject)"
+                              title="Reject user"
                             >
                               <i className="bi bi-x-lg"></i> Reject
                             </button>

@@ -239,7 +239,7 @@ const Options = () => {
             <div className="d-flex justify-content-between align-items-center mb-3">
               <div>
                 <strong style={{ fontSize: "15px" }}>
-                  <i className="bi bi-cpu-fill text-success me-2"></i> Real-time Rule Engine (POST /api/v1/options/validate)
+                  <i className="bi bi-cpu-fill text-success me-2"></i> Real-time Rule Engine
                 </strong>
                 <p style={{ margin: 0, fontSize: "13px", color: "gray" }}>
                   Select option codes to verify against dependencies and mutual exclusions in the backend engine.

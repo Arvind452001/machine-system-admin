@@ -315,13 +315,13 @@ const EnquiryDetails = () => {
 
           {/* Right Action Sidebar: Assignment & Status */}
           <div className="col-lg-4">
-            {/* Representative Assignment (PATCH /api/v1/enquiries/{id}/assign) */}
+            {/* Representative Assignment */}
             <div className="panel p-3 mb-3" style={{ background: "var(--card-bg, #fff)", borderRadius: "8px", border: "1px solid var(--border, #eee)" }}>
               <h3 style={{ fontSize: "15px", fontWeight: "600", marginBottom: "8px" }}>
                 <i className="bi bi-person-badge me-2"></i> Representative Assignment
               </h3>
               <p style={{ fontSize: "12px", color: "gray", marginBottom: "12px" }}>
-                Assign this enquiry to a regional representative (PATCH /api/v1/enquiries/:id/assign).
+                Assign this enquiry to a regional representative.
               </p>
 
               <div className="mb-3">
@@ -351,13 +351,13 @@ const EnquiryDetails = () => {
               </button>
             </div>
 
-            {/* Workflow Status Update (PATCH /api/v1/enquiries/{id}/status) */}
+            {/* Workflow Status Update */}
             <div className="panel p-3 mb-3" style={{ background: "var(--card-bg, #fff)", borderRadius: "8px", border: "1px solid var(--border, #eee)" }}>
               <h3 style={{ fontSize: "15px", fontWeight: "600", marginBottom: "8px" }}>
                 <i className="bi bi-arrow-repeat me-2"></i> Workflow Status
               </h3>
               <p style={{ fontSize: "12px", color: "gray", marginBottom: "12px" }}>
-                Update status and log internal progress (PATCH /api/v1/enquiries/:id/status).
+                Update status and log internal progress.
               </p>
 
               <div className="mb-2">

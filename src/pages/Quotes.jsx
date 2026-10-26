@@ -296,7 +296,7 @@ const Quotes = () => {
                             type="button"
                             className="table-action btn-link border-0 p-0"
                             onClick={() => handleDownloadPdf(q._id, qNum)}
-                            title="Download PDF (GET /api/v1/quotes/:id/pdf)"
+                            title="Download PDF"
                           >
                             <i className="bi bi-file-earmark-pdf"></i>
                           </button>
@@ -304,7 +304,7 @@ const Quotes = () => {
                             type="button"
                             className="table-action btn-link border-0 p-0 text-danger"
                             onClick={() => handleDeleteQuote(q._id, qNum)}
-                            title="Delete quotation (DELETE /api/v1/quotes/:id)"
+                            title="Delete quotation"
                           >
                             <i className="bi bi-trash"></i>
                           </button>
