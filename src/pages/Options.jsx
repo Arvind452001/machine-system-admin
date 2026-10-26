@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
 import { optionsApi } from "../api/optionsApi";
+import Pagination from "../components/Pagination";
 import { machinesApi } from "../api/machinesApi";
 
 const FALLBACK_OPTIONS = [
@@ -389,7 +390,7 @@ const Options = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredOptions.map((opt) => {
+                {filteredOptions.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((opt) => {
                   const isActive =
                     (opt.status || "").toLowerCase() === "active" || Boolean(opt.isActive);
                   const reqCount = Array.isArray(opt.requiresOption) ? opt.requiresOption.length : 0;
@@ -431,11 +432,7 @@ const Options = () => {
               </tbody>
             </table>
           </div>
-          <footer className="table-footer">
-            <span>
-              Showing {filteredOptions.length} of {options.length} options
-            </span>
-          </footer>
+          <Pagination currentPage={currentPage} totalItems={filteredOptions.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} itemName="options" />
         </section>
 
         <Footer />

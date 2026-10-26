@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
 import { usersApi } from "../api/usersApi";
+import Pagination from "../components/Pagination";
 
 const FALLBACK_REPS = [
   {
@@ -25,6 +26,9 @@ const Representatives = () => {
   const [viewTab, setViewTab] = useState("reps"); // 'reps' or 'allUsers'
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState({ error: "", success: "" });
+  const [repPage, setRepPage] = useState(1);
+  const [userPage, setUserPage] = useState(1);
+  const PAGE_SIZE = 5;
 
   const loadData = () => {
     setLoading(true);
@@ -174,7 +178,9 @@ const Representatives = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {representatives.map((rep) => {
+                  {representatives
+                    .slice((repPage - 1) * PAGE_SIZE, repPage * PAGE_SIZE)
+                    .map((rep) => {
                     const initials = (rep.name || "Rep")
                       .split(" ")
                       .map((n) => n[0])
@@ -229,6 +235,7 @@ const Representatives = () => {
                 </tbody>
               </table>
             </div>
+            <Pagination currentPage={repPage} totalItems={representatives.length} pageSize={PAGE_SIZE} onPageChange={setRepPage} itemName="representatives" />
           </section>
         ) : (
           <section className="table-panel">
@@ -244,7 +251,9 @@ const Representatives = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {allUsers.map((u) => {
+                  {allUsers
+                    .slice((userPage - 1) * PAGE_SIZE, userPage * PAGE_SIZE)
+                    .map((u) => {
                     const isApproved = u.isApproved !== false && u.approvalStatus !== "rejected" && u.approvalStatus !== "pending";
 
                     return (
@@ -293,6 +302,7 @@ const Representatives = () => {
                 </tbody>
               </table>
             </div>
+            <Pagination currentPage={userPage} totalItems={allUsers.length} pageSize={PAGE_SIZE} onPageChange={setUserPage} itemName="users" />
           </section>
         )}
 

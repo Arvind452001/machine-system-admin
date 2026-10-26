@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
 import { quotesApi } from "../api/quotesApi";
+import Pagination from "../components/Pagination";
 
 const FALLBACK_QUOTES = [
   {
@@ -250,7 +251,7 @@ const Quotes = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredQuotes.map((q) => {
+                {filteredQuotes.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((q) => {
                   const qNum = q.quoteNumber || "Quote";
                   const mach = q.machineName || q.machine?.name || "Machinery System";
                   const cust = q.customerName || q.customer?.name || "Valued Customer";
@@ -316,11 +317,7 @@ const Quotes = () => {
               </tbody>
             </table>
           </div>
-          <footer className="table-footer">
-            <span>
-              Showing {filteredQuotes.length} of {quotes.length} quotes
-            </span>
-          </footer>
+          <Pagination currentPage={currentPage} totalItems={filteredQuotes.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} itemName="quotes" />
         </section>
 
         <Footer />

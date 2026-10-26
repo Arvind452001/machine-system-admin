@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
+import Pagination from "../components/Pagination";
 
 const initialRules = [
   {
@@ -185,20 +186,7 @@ const Pricing = () => {
               </tbody>
             </table>
           </div>
-          <footer className="table-footer">
-            <span>
-              Indicative prices are shown before final representative review.
-            </span>
-            <nav aria-label="Pagination" className="pagination">
-              <a className="current" href="#page1">
-                1
-              </a>
-              <a href="#page2">2</a>
-              <a aria-label="Next page" href="#next">
-                <i className="bi bi-chevron-right"></i>
-              </a>
-            </nav>
-          </footer>
+          <Pagination currentPage={currentPage} totalItems={rules.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} itemName="price rules" />
         </section>
 
         <Footer />

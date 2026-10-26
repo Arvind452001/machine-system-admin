@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
 import { machinesApi } from "../api/machinesApi";
+import Pagination from "../components/Pagination";
 
 const FALLBACK_MACHINES = [
   {
@@ -228,7 +229,7 @@ const Machines = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredMachines.map((machine) => {
+                {filteredMachines.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((machine) => {
                   const mId = machine._id || machine.id || machine.slug;
                   const isPublished =
                     (machine.status || "").toLowerCase() === "published" ||
@@ -275,11 +276,7 @@ const Machines = () => {
               </tbody>
             </table>
           </div>
-          <footer className="table-footer">
-            <span>
-              Showing {filteredMachines.length} of {machines.length} machines
-            </span>
-          </footer>
+          <Pagination currentPage={currentPage} totalItems={filteredMachines.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} itemName="machines" />
         </section>
 
         <Footer />

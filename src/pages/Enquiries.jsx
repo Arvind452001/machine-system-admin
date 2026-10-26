@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
 import { enquiriesApi } from "../api/enquiriesApi";
+import Pagination from "../components/Pagination";
 
 const FALLBACK_ENQUIRIES = [
   {
@@ -205,7 +206,7 @@ const Enquiries = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredEnquiries.map((enq) => {
+                {filteredEnquiries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((enq) => {
                   const custName =
                     enq.fullName ||
                     enq.customer?.name ||
@@ -255,11 +256,7 @@ const Enquiries = () => {
               </tbody>
             </table>
           </div>
-          <footer className="table-footer">
-            <span>
-              Showing {filteredEnquiries.length} of {enquiries.length} enquiries
-            </span>
-          </footer>
+          <Pagination currentPage={currentPage} totalItems={filteredEnquiries.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} itemName="enquiries" />
         </section>
 
         <Footer />

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
+import Pagination from "../components/Pagination";
 import { categoryService } from "../services/categoryService";
 
 const AVAILABLE_ICONS = [
@@ -22,6 +23,8 @@ const Categories = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 6;
   const [statusFilter, setStatusFilter] = useState("All statuses");
 
   // Modal states for Create/Edit
@@ -417,26 +420,23 @@ const Categories = () => {
             </table>
           </div>
 
-          <footer className="table-footer">
-            <span>
-              Showing {filteredCategories.length} of {categories.length} categories
-            </span>
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button
-                className="btn-subtle"
-                style={{ height: "30px", fontSize: "11px", padding: "0 10px" }}
-                onClick={() => {
-                  if (window.confirm("Reset categories to default initial set?")) {
-                    categoryService.resetDefaults();
-                    loadCategories();
-                    showNotification("Categories reset to default catalog values.");
-                  }
-                }}
-              >
-                <i className="bi bi-arrow-counterclockwise"></i> Reset defaults
-              </button>
-            </div>
-          </footer>
+          <Pagination currentPage={currentPage} totalItems={filteredCategories.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} itemName="categories" />
+          <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 16px", borderTop: "1px solid #f0f0ee" }}>
+            <button
+              className="btn-subtle"
+              style={{ height: "30px", fontSize: "11px", padding: "0 10px" }}
+              onClick={() => {
+                if (window.confirm("Reset categories to default initial set?")) {
+                  categoryService.resetDefaults();
+                  loadCategories();
+                  showNotification("Categories reset to default catalog values.");
+                }
+              }}
+            >
+              <i className="bi bi-arrow-counterclockwise" style={{ marginRight: "4px" }}></i>
+              Reset Catalog
+            </button>
+          </div>
         </section>
 
         {/* Create / Edit Category Modal */}

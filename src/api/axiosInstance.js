@@ -1,7 +1,13 @@
 import axios from "axios";
 
-const rawBaseUrl =
-  import.meta.env.VITE_API_BASE_URL || "https://node.aitechnotech.in/machine";
+const isLocalhost =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1");
+
+const rawBaseUrl = isLocalhost
+  ? "http://localhost:5000"
+  : import.meta.env.VITE_API_BASE_URL || "https://node.aitechnotech.in/machine";
 
 const normalizedBaseUrl = rawBaseUrl.replace(/\/+$/, "");
 const BASE_URL = normalizedBaseUrl.endsWith("/api/v1")
