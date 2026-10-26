@@ -1,13 +1,28 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
+import { machinesApi } from "../api/machinesApi";
 import { categoryService } from "../services/categoryService";
 
 const AddMachine = () => {
   const navigate = useNavigate();
-  const [categories, setCategories] = useState(() => categoryService.getCategoriesSync());
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get("id");
+  const fileInputRef = useRef(null);
+
+  const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [feedback, setFeedback] = useState({
+    error: "",
+    success: "",
+  });
+
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [existingImage, setExistingImage] = useState("");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -15,48 +30,187 @@ const AddMachine = () => {
     category: "",
     price: "",
     description: "",
-    status: "Draft",
+    status: "published",
   });
 
+  // Load categories and existing machine details if in edit mode
   useEffect(() => {
-    const fetchCats = async () => {
+    let active = true;
+
+    const loadData = async () => {
+      setLoadingCategories(true);
       try {
-        setLoadingCategories(true);
-        const data = await categoryService.getCategories();
-        setCategories(data);
+        const res = await machinesApi.getCategories();
+        const list = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.names)
+          ? res.names
+          : Array.isArray(res)
+          ? res
+          : [];
+
+        if (active) {
+          if (list.length > 0) {
+            setCategories(list);
+          } else {
+            setCategories(categoryService.getCategoriesSync());
+          }
+        }
       } catch (err) {
-        console.error("Failed to fetch dynamic categories:", err);
+        if (active) {
+          setCategories(categoryService.getCategoriesSync());
+        }
       } finally {
-        setLoadingCategories(false);
+        if (active) setLoadingCategories(false);
+      }
+
+      if (!editId) return;
+
+      try {
+        const res = await machinesApi.getMachine(editId);
+        const machine = res?.data || res;
+
+        if (!active || !machine) return;
+
+        setFormData({
+          name: machine.name || "",
+          model: machine.sku || machine.slug || "",
+          category:
+            typeof machine.category === "object"
+              ? machine.category?.name || ""
+              : machine.category || "",
+          price: machine.basePrice ?? "",
+          description: machine.description || "",
+          status: machine.status || "published",
+        });
+
+        const image =
+          machine.image ||
+          machine.imageUrl ||
+          machine.thumbnail ||
+          machine.images?.[0]?.url ||
+          machine.images?.[0] ||
+          "";
+
+        setExistingImage(
+          typeof image === "string" ? image : image?.url || ""
+        );
+      } catch (err) {
+        if (active) {
+          setFeedback({
+            error: "Could not load machine details.",
+            success: "",
+          });
+        }
       }
     };
-    fetchCats();
 
-    const handleCatsUpdated = () => {
-      setCategories(categoryService.getCategoriesSync());
-    };
+    loadData();
 
-    window.addEventListener("machine-categories-changed", handleCatsUpdated);
     return () => {
-      window.removeEventListener("machine-categories-changed", handleCatsUpdated);
+      active = false;
     };
-  }, []);
+  }, [editId]);
+
+  // Clean up object URL on preview unmount
+  useEffect(() => {
+    if (!selectedImage) {
+      setImagePreview("");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(selectedImage);
+    setImagePreview(previewUrl);
+
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [selectedImage]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const handleSubmit = (e) => {
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setFeedback({ error: "", success: "" });
+
+    if (!file.type.startsWith("image/")) {
+      setFeedback({
+        error: "Please select a valid image file.",
+        success: "",
+      });
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setFeedback({
+        error: "Image size must be 5 MB or less.",
+        success: "",
+      });
+      e.target.value = "";
+      return;
+    }
+
+    setSelectedImage(file);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate("/machines");
+    setFeedback({ error: "", success: "" });
+    setSubmitting(true);
+
+    try {
+      const payload = new FormData();
+      payload.append("name", formData.name.trim());
+      payload.append("sku", formData.model.trim());
+      payload.append("category", formData.category);
+      payload.append("basePrice", String(Number(formData.price) || 0));
+      payload.append("description", formData.description.trim());
+      payload.append(
+        "summary",
+        formData.description.trim().slice(0, 100) || formData.name.trim()
+      );
+      payload.append("status", formData.status.toLowerCase());
+
+      if (selectedImage) {
+        payload.append("image", selectedImage);
+      }
+
+      if (editId) {
+        await machinesApi.updateMachine(editId, payload);
+        setFeedback({
+          success: "Machine successfully updated!",
+          error: "",
+        });
+      } else {
+        await machinesApi.createMachine(payload);
+        setFeedback({
+          success: "Machine created successfully!",
+          error: "",
+        });
+      }
+
+      setTimeout(() => navigate("/machines"), 1000);
+    } catch (err) {
+      setFeedback({
+        error: err.message || "Failed to save machine.",
+        success: "",
+      });
+      setSubmitting(false);
+    }
   };
 
   const breadcrumb = (
     <>
       <Link to="/machines">Machines</Link>
       <i className="bi bi-chevron-right"></i>
-      <strong>Add machine</strong>
+      <strong>{editId ? "Edit machine" : "Add machine"}</strong>
     </>
   );
 
@@ -68,12 +222,44 @@ const AddMachine = () => {
             <div className="eyebrow">
               <span className="eyebrow-line"></span>CONFIGURATOR CATALOG
             </div>
-            <h1>Add machine</h1>
+            <h1>{editId ? "Edit machine" : "Add machine"}</h1>
             <p className="welcome-subtitle">
-              Create a machine listing and set its starting configuration.
+              {editId
+                ? "Update machine specifications, image and pricing."
+                : "Create a machine listing and set its starting configuration."}
             </p>
           </div>
         </section>
+
+        {feedback.error && (
+          <div
+            className="alert alert-danger mb-3"
+            style={{
+              background: "#fde8e8",
+              color: "#9b1c1c",
+              padding: "12px 16px",
+              borderRadius: "6px",
+            }}
+          >
+            <i className="bi bi-exclamation-triangle me-2"></i>
+            {feedback.error}
+          </div>
+        )}
+
+        {feedback.success && (
+          <div
+            className="alert alert-success mb-3"
+            style={{
+              background: "#def7ec",
+              color: "#03543f",
+              padding: "12px 16px",
+              borderRadius: "6px",
+            }}
+          >
+            <i className="bi bi-check-circle me-2"></i>
+            {feedback.success}
+          </div>
+        )}
 
         <form className="form-layout" onSubmit={handleSubmit}>
           <section className="form-panel">
@@ -84,6 +270,7 @@ const AddMachine = () => {
               </div>
               <span className="required-note">* Required</span>
             </div>
+
             <div className="form-grid">
               <label className="form-field">
                 <span>Machine name *</span>
@@ -96,6 +283,7 @@ const AddMachine = () => {
                   onChange={handleChange}
                 />
               </label>
+
               <label className="form-field">
                 <span>Model code *</span>
                 <input
@@ -107,21 +295,9 @@ const AddMachine = () => {
                   onChange={handleChange}
                 />
               </label>
+
               <label className="form-field">
-                <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span>Category *</span>
-                  <Link
-                    to="/add-category"
-                    style={{
-                      color: "var(--accent)",
-                      fontSize: "11px",
-                      fontWeight: "600",
-                    }}
-                    title="Create new category classification"
-                  >
-                    + New category
-                  </Link>
-                </span>
+                <span>Category *</span>
                 <select
                   name="category"
                   required
@@ -131,18 +307,17 @@ const AddMachine = () => {
                   <option value="">
                     {loadingCategories ? "Loading categories..." : "Select category"}
                   </option>
-                  {categories.map((cat) => (
-                    <option key={cat.id || cat.name} value={cat.name}>
-                      {cat.name} {cat.code ? `(${cat.code})` : ""} {cat.status === "Draft" ? "[Draft]" : ""}
-                    </option>
-                  ))}
-                  {categories.length === 0 && (
-                    <option value="" disabled>
-                      No categories available (click + New category above)
-                    </option>
-                  )}
+                  {categories.map((cat, i) => {
+                    const catName = typeof cat === "string" ? cat : cat.name;
+                    return (
+                      <option key={cat._id || cat.id || i} value={catName}>
+                        {catName}
+                      </option>
+                    );
+                  })}
                 </select>
               </label>
+
               <label className="form-field">
                 <span>Base price *</span>
                 <div className="input-prefix">
@@ -160,6 +335,7 @@ const AddMachine = () => {
                   />
                 </div>
               </label>
+
               <label className="form-field field-wide">
                 <span>Customer description</span>
                 <textarea
@@ -170,10 +346,43 @@ const AddMachine = () => {
                   onChange={handleChange}
                 ></textarea>
               </label>
+
               <label className="form-field">
                 <span>Machine image</span>
-                <input accept="image/*" name="image" type="file" />
+                <input
+                  ref={fileInputRef}
+                  accept="image/*"
+                  name="image"
+                  type="file"
+                  onChange={handleImageChange}
+                />
+                {(imagePreview || existingImage) && (
+                  <div
+                    style={{
+                      marginTop: "6px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                    }}
+                  >
+                    <img
+                      src={imagePreview || existingImage}
+                      alt="Preview"
+                      style={{
+                        width: "48px",
+                        height: "40px",
+                        objectFit: "cover",
+                        borderRadius: "4px",
+                        border: "1px solid #e2e2de",
+                      }}
+                    />
+                    <small style={{ color: "#777871" }}>
+                      {selectedImage ? selectedImage.name : "Current image"}
+                    </small>
+                  </div>
+                )}
               </label>
+
               <label className="form-field">
                 <span>Publication status</span>
                 <select
@@ -181,18 +390,36 @@ const AddMachine = () => {
                   value={formData.status}
                   onChange={handleChange}
                 >
-                  <option>Draft</option>
-                  <option>Published</option>
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
                 </select>
               </label>
             </div>
           </section>
+
           <div className="form-actions">
             <Link className="btn-subtle" to="/machines">
               Cancel
             </Link>
-            <button className="btn btn-accent" type="submit">
-              <i className="bi bi-check-lg"></i> Save machine
+            <button
+              className="btn btn-accent"
+              type="submit"
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <span
+                    className="spinner-border spinner-border-sm me-2"
+                    role="status"
+                  ></span>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-check-lg"></i>{" "}
+                  {editId ? "Update machine" : "Save machine"}
+                </>
+              )}
             </button>
           </div>
         </form>

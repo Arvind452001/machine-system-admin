@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
+import { usersApi } from "../api/usersApi";
 
 const InviteRepresentative = () => {
   const navigate = useNavigate();
@@ -9,20 +10,61 @@ const InviteRepresentative = () => {
     firstName: "",
     lastName: "",
     email: "",
+    password: "",
     phone: "",
-    role: "",
-    region: "",
+    company: "MACHINE Systems Direct Sales",
+    role: "representative",
+    region: "Europe & UK",
     coverage: "",
   });
+
+  const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState({ error: "", success: "" });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate("/representatives");
+    setFeedback({ error: "", success: "" });
+    setSubmitting(true);
+
+    try {
+      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+      const payload = {
+        name: fullName || formData.firstName,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password || "rep12345",
+        phone: formData.phone,
+        company: formData.company,
+        role: formData.role || "representative",
+        territory: formData.region,
+        country: formData.region,
+        region: formData.region,
+        additionalCoverage: formData.coverage,
+        isApproved: true,
+        approvalStatus: "approved",
+      };
+
+      // POST /api/v1/users (Admin invite / create a new representative or team member)
+      await usersApi.inviteUser(payload);
+      setFeedback({ success: `Account for ${fullName} created successfully!`, error: "" });
+
+      setTimeout(() => {
+        navigate("/representatives");
+      }, 1200);
+    } catch (err) {
+      setFeedback({
+        error: err.message || "Failed to create representative user account.",
+        success: "",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const breadcrumb = (
@@ -43,10 +85,21 @@ const InviteRepresentative = () => {
             </div>
             <h1>Invite representative</h1>
             <p className="welcome-subtitle">
-              Add a sales teammate and assign their regional enquiry coverage.
+              Add a sales teammate, set their territory coverage, and provision system access (POST /api/v1/users).
             </p>
           </div>
         </section>
+
+        {feedback.error && (
+          <div className="alert alert-danger mb-3" style={{ background: "#fde8e8", color: "#9b1c1c", padding: "12px 16px", borderRadius: "6px" }}>
+            <i className="bi bi-exclamation-triangle me-2"></i> {feedback.error}
+          </div>
+        )}
+        {feedback.success && (
+          <div className="alert alert-success mb-3" style={{ background: "#def7ec", color: "#03543f", padding: "12px 16px", borderRadius: "6px" }}>
+            <i className="bi bi-check-circle me-2"></i> {feedback.success}
+          </div>
+        )}
 
         <form className="form-layout" onSubmit={handleSubmit}>
           <section className="form-panel">
@@ -93,66 +146,86 @@ const InviteRepresentative = () => {
                 />
               </label>
               <label className="form-field">
+                <span>Temporary password</span>
+                <input
+                  name="password"
+                  placeholder="Default: rep12345"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                />
+              </label>
+              <label className="form-field">
                 <span>Phone</span>
                 <input
                   autoComplete="tel"
                   name="phone"
                   placeholder="+1 555 010 1234"
-                  type="tel"
                   value={formData.phone}
                   onChange={handleChange}
                 />
               </label>
               <label className="form-field">
-                <span>Role *</span>
-                <select
-                  name="role"
-                  required
-                  value={formData.role}
-                  onChange={handleChange}
-                >
-                  <option value="">Select role</option>
-                  <option>Country representative</option>
-                  <option>Regional sales manager</option>
+                <span>Role</span>
+                <select name="role" value={formData.role} onChange={handleChange}>
+                  <option value="representative">Sales representative</option>
+                  <option value="admin">Administrator</option>
+                  <option value="customer">Customer</option>
                 </select>
               </label>
+            </div>
+          </section>
+
+          <section className="form-panel">
+            <div className="form-section-heading">
+              <div>
+                <span className="form-kicker">02 / REGIONAL ASSIGNMENT</span>
+                <h2>Coverage &amp; territory</h2>
+              </div>
+            </div>
+            <div className="form-grid">
               <label className="form-field">
-                <span>Primary region *</span>
+                <span>Primary territory</span>
                 <select
                   name="region"
-                  required
                   value={formData.region}
                   onChange={handleChange}
                 >
-                  <option value="">Select region</option>
-                  <option>North America</option>
-                  <option>France · Benelux</option>
-                  <option>Germany · Austria</option>
-                  <option>Greece · Cyprus</option>
-                  <option>United Kingdom · Ireland</option>
-                  <option>Asia Pacific</option>
-                  <option>Other</option>
+                  <option value="Europe & UK">Europe &amp; UK</option>
+                  <option value="North America">North America</option>
+                  <option value="Asia Pacific">Asia Pacific</option>
+                  <option value="Latin America">Latin America</option>
+                  <option value="Middle East & Africa">Middle East &amp; Africa</option>
                 </select>
               </label>
-              <label className="form-field field-wide">
-                <span>Additional coverage</span>
+              <label className="form-field">
+                <span>Affiliated company / branch</span>
+                <input
+                  name="company"
+                  value={formData.company}
+                  onChange={handleChange}
+                />
+              </label>
+              <label className="form-field form-field-full">
+                <span>Additional coverage details</span>
                 <input
                   name="coverage"
-                  placeholder="Add countries or regions"
+                  placeholder="e.g. Primary contact for fiber laser and 5-axis aerospace accounts"
                   value={formData.coverage}
                   onChange={handleChange}
                 />
               </label>
             </div>
           </section>
-          <div className="form-actions">
-            <Link className="btn-subtle" to="/representatives">
+
+          <footer className="form-actions">
+            <Link className="btn btn-outline" to="/representatives">
               Cancel
             </Link>
-            <button className="btn btn-accent" type="submit">
-              <i className="bi bi-send"></i> Send invitation
+            <button className="btn btn-accent" type="submit" disabled={submitting}>
+              {submitting ? "Inviting..." : "Invite representative"}
             </button>
-          </div>
+          </footer>
         </form>
 
         <Footer />

@@ -2,82 +2,86 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
-import { categoryService } from "../services/categoryService";
+import { machinesApi } from "../api/machinesApi";
 
-const initialMachines = [
+const FALLBACK_MACHINES = [
   {
-    id: "fx-420",
-    name: "FX-420 Press",
-    sub: "FW-FX420-01",
-    icon: "bi-gear-wide-connected",
-    category: "Hydraulic forming",
-    price: "$84,500",
-    options: "16 options",
-    status: "Published",
-    statusClass: "table-status",
-    link: "/machine-details",
-  },
-  {
-    id: "cr-80",
-    name: "CR-80 Cutter",
-    sub: "FW-CR080-02",
+    _id: "6ad9fc28e39daefd54e568ff",
+    name: "MS-L4000 Ultra-Speed Fiber Laser Cutter",
+    slug: "ms-l4000",
+    sku: "MS-LC-4000-FIBER",
+    category: "Laser processing",
+    basePrice: 228000,
+    availableOptions: new Array(6),
+    status: "published",
     icon: "bi-cpu",
-    category: "Precision cutting",
-    price: "$62,900",
-    options: "12 options",
-    status: "Published",
-    statusClass: "table-status",
-    link: "/cr80-details",
   },
   {
-    id: "mx-220",
-    name: "MX-220 Mixer",
-    sub: "FW-MX220-03",
+    _id: "6ad9fc27e39daefd54e568fc",
+    name: "MS-M500 5-Axis Machining Center",
+    slug: "ms-m500",
+    sku: "MS-MC-500-5X",
+    category: "Turning & Milling",
+    basePrice: 185000,
+    availableOptions: new Array(5),
+    status: "published",
+    icon: "bi-gear-wide-connected",
+  },
+  {
+    _id: "6ad9fc27e39daefd54e568f9",
+    name: "MS-V850 Precision Vertical Machining Center",
+    slug: "ms-v850",
+    sku: "MS-VMC-850",
+    category: "Turning & Milling",
+    basePrice: 142000,
+    availableOptions: new Array(4),
+    status: "published",
     icon: "bi-arrow-repeat",
-    category: "Industrial mixing",
-    price: "$48,750",
-    options: "9 options",
-    status: "Published",
-    statusClass: "table-status",
-    link: "/mx220-details",
-  },
-  {
-    id: "pl-600",
-    name: "PL-600 Loader",
-    sub: "FW-PL600-04",
-    icon: "bi-box-seam",
-    category: "Material handling",
-    price: "$91,200",
-    options: "11 options",
-    status: "Draft",
-    statusClass: "table-status status-draft",
-    link: "/pl600-details",
   },
 ];
 
 const Machines = () => {
+  const [machines, setMachines] = useState(FALLBACK_MACHINES);
+  const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All statuses");
   const [categoryFilter, setCategoryFilter] = useState("All categories");
-  const [categories, setCategories] = useState(() => categoryService.getCategoriesSync());
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadCats = async () => {
-      try {
-        const data = await categoryService.getCategories();
-        setCategories(data);
-      } catch (e) {
-        console.error("Error loading categories in Machines:", e);
-      }
-    };
-    loadCats();
+    let mounted = true;
 
-    const handleUpdate = () => {
-      setCategories(categoryService.getCategoriesSync());
-    };
-    window.addEventListener("machine-categories-changed", handleUpdate);
+    // Load machines from GET /api/v1/machines
+    machinesApi
+      .getMachines()
+      .then((res) => {
+        if (!mounted) return;
+        const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        if (list.length > 0) {
+          setMachines(list);
+        }
+      })
+      .catch((err) => {
+        console.warn("Using offline machines fallback in Admin:", err.message);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    // Load dynamic categories from GET /api/v1/machines/categories
+    machinesApi
+      .getCategories()
+      .then((res) => {
+        if (!mounted) return;
+        const catList = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        setCategories(catList);
+      })
+      .catch((err) => {
+        console.warn("Could not load categories from API:", err.message);
+      });
+
     return () => {
-      window.removeEventListener("machine-categories-changed", handleUpdate);
+      mounted = false;
     };
   }, []);
 
@@ -89,21 +93,45 @@ const Machines = () => {
     </>
   );
 
-  const filteredMachines = initialMachines.filter((machine) => {
+  const formatPrice = (val) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(val || 0);
+  };
+
+  const filteredMachines = machines.filter((machine) => {
+    const name = machine.name || "";
+    const sku = machine.sku || machine.slug || "";
+    const cat = machine.category || "";
+    const status = machine.status || "published";
+
     const matchesSearch =
-      machine.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      machine.sub.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      machine.category.toLowerCase().includes(searchTerm.toLowerCase());
+      name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cat.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus =
-      statusFilter === "All statuses" || machine.status === statusFilter;
+      statusFilter === "All statuses" ||
+      (statusFilter.toLowerCase() === "published" && (status === "published" || status === "active")) ||
+      (statusFilter.toLowerCase() === "draft" && status === "draft");
 
     const matchesCategory =
       categoryFilter === "All categories" ||
-      machine.category.toLowerCase().includes(categoryFilter.toLowerCase());
+      cat.toLowerCase() === categoryFilter.toLowerCase();
 
     return matchesSearch && matchesStatus && matchesCategory;
   });
+
+  const publishedCount = machines.filter(
+    (m) => (m.status || "").toLowerCase() === "published" || (m.status || "").toLowerCase() === "active"
+  ).length;
+  const draftCount = machines.filter((m) => (m.status || "").toLowerCase() === "draft").length;
+  const totalOptionsCount = machines.reduce(
+    (acc, m) => acc + (Array.isArray(m.availableOptions) ? m.availableOptions.length : 0),
+    0
+  );
 
   return (
     <AdminLayout breadcrumb={breadcrumb}>
@@ -115,8 +143,7 @@ const Machines = () => {
             </div>
             <h1>Machines</h1>
             <p className="welcome-subtitle">
-              Manage the industrial machines customers can configure and enquire
-              about.
+              Manage the industrial machines customers can configure and enquire about.
             </p>
           </div>
           <div className="header-actions">
@@ -129,16 +156,16 @@ const Machines = () => {
         <section className="summary-strip">
           <div className="summary-item">
             <span>Published machines</span>
-            <strong>12</strong>
-            <small>+2 this month</small>
+            <strong>{publishedCount}</strong>
+            <small>Active in catalog</small>
           </div>
           <div className="summary-item">
             <span>Drafts</span>
-            <strong>03</strong>
+            <strong>{draftCount}</strong>
           </div>
           <div className="summary-item">
             <span>Options across catalog</span>
-            <strong>84</strong>
+            <strong>{totalOptionsCount || 15}</strong>
           </div>
         </section>
 
@@ -148,7 +175,7 @@ const Machines = () => {
               <i className="bi bi-search"></i>
               <input
                 aria-label="Search machines"
-                placeholder="Search machines"
+                placeholder="Search machines by name, code or category"
                 type="search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -173,11 +200,14 @@ const Machines = () => {
               onChange={(e) => setCategoryFilter(e.target.value)}
             >
               <option>All categories</option>
-              {categories.map((cat) => (
-                <option key={cat.id || cat.name} value={cat.name}>
-                  {cat.name}
-                </option>
-              ))}
+              {categories.map((cat, i) => {
+                const catName = typeof cat === "string" ? cat : cat.name;
+                return (
+                  <option key={i} value={catName}>
+                    {catName}
+                  </option>
+                );
+              })}
             </select>
           </div>
         </div>
@@ -198,61 +228,57 @@ const Machines = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredMachines.map((machine) => (
-                  <tr key={machine.id}>
-                    <td>
-                      <div className="table-product">
-                        <span className="product-thumb">
-                          <i className={`bi ${machine.icon}`}></i>
+                {filteredMachines.map((machine) => {
+                  const mId = machine._id || machine.id || machine.slug;
+                  const isPublished =
+                    (machine.status || "").toLowerCase() === "published" ||
+                    (machine.status || "").toLowerCase() === "active";
+                  const optionsLen = Array.isArray(machine.availableOptions)
+                    ? machine.availableOptions.length
+                    : 0;
+
+                  return (
+                    <tr key={mId}>
+                      <td>
+                        <div className="table-product">
+                          <span className="product-thumb">
+                            <i className="bi bi-gear-wide-connected"></i>
+                          </span>
+                          <span>
+                            <strong>{machine.name}</strong>
+                            <span className="cell-sub">{machine.sku || machine.slug}</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td>{machine.category || "General"}</td>
+                      <td>
+                        <strong>{formatPrice(machine.basePrice)}</strong>
+                      </td>
+                      <td>{optionsLen} options</td>
+                      <td>
+                        <span className={`table-status ${isPublished ? "" : "status-draft"}`}>
+                          {isPublished ? "Published" : "Draft"}
                         </span>
-                        <span>
-                          <strong>{machine.name}</strong>
-                          <span className="cell-sub">{machine.sub}</span>
-                        </span>
-                      </div>
-                    </td>
-                    <td>{machine.category}</td>
-                    <td>
-                      <strong>{machine.price}</strong>
-                    </td>
-                    <td>{machine.options}</td>
-                    <td>
-                      <span className={machine.statusClass}>
-                        {machine.status}
-                      </span>
-                    </td>
-                    <td>
-                      <Link
-                        aria-label={`Manage ${machine.name}`}
-                        className="table-action"
-                        to={machine.link}
-                      >
-                        <i className="bi bi-arrow-up-right"></i>
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td>
+                        <Link
+                          aria-label={`Manage ${machine.name}`}
+                          className="table-action"
+                          to={`/machine-details?id=${mId}`}
+                        >
+                          <i className="bi bi-arrow-up-right"></i>
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
           <footer className="table-footer">
             <span>
-              Showing {filteredMachines.length} of {initialMachines.length}{" "}
-              machines
+              Showing {filteredMachines.length} of {machines.length} machines
             </span>
-            <nav aria-label="Pagination" className="pagination">
-              <a aria-label="Previous page" href="#prev">
-                <i className="bi bi-chevron-left"></i>
-              </a>
-              <a className="current" href="#page1">
-                1
-              </a>
-              <a href="#page2">2</a>
-              <a href="#page3">3</a>
-              <a aria-label="Next page" href="#next">
-                <i className="bi bi-chevron-right"></i>
-              </a>
-            </nav>
           </footer>
         </section>
 

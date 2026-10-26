@@ -402,7 +402,7 @@ body:has(.side-link.active[href="/machines"]) .summary-item:nth-child(1)::after 
 .form-field input::placeholder, .form-field textarea::placeholder { color: #a1a29b; }
 .form-field input:focus, .form-field select:focus, .form-field textarea:focus { border-color: #c8755d; box-shadow: 0 0 0 3px #c94f2d14; }
 .form-field input[type="file"] { padding: 8px; color: #777871; }
-.field-wide { grid-column: 1 / -1; }
+.field-wide, .form-field-full { grid-column: 1 / -1; }
 .input-prefix { display: flex; min-height: 42px; align-items: center; overflow: hidden; border: 1px solid #e2e2de; border-radius: 5px; }
 .input-prefix:focus-within { border-color: #c8755d; box-shadow: 0 0 0 3px #c94f2d14; }
 .input-prefix > span { padding-left: 12px; color: #898a83; font-size: 12px; font-weight: 500; }

@@ -1,8 +1,80 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
+import { useAuth } from "../context/AuthContext";
+import { statsApi } from "../api/statsApi";
+
+const FALLBACK_ENQUIRIES = [
+  {
+    id: "amelia",
+    customer: { name: "Amelia Laurent", company: "Nordic Materials Co.", country: "France" },
+    machine: { name: "FX-420 Press", category: "Hydraulic forming" },
+    status: "new",
+    timeAgo: "12 min ago",
+  },
+  {
+    id: "martin",
+    customer: { name: "Martin Keller", company: "Keller Anlagenbau", country: "Germany" },
+    machine: { name: "CR-80 Cutter", category: "Precision cutting" },
+    status: "in_review",
+    timeAgo: "48 min ago",
+  },
+  {
+    id: "sofia",
+    customer: { name: "Sofia Papadakis", company: "Aegean Industrial", country: "Greece" },
+    machine: { name: "MX-220 Mixer", category: "Industrial mixing" },
+    status: "assigned",
+    timeAgo: "2 hours ago",
+  },
+  {
+    id: "james",
+    customer: { name: "James Thompson", company: "Thompson & Sons", country: "United Kingdom" },
+    machine: { name: "FX-420 Press", category: "Hydraulic forming" },
+    status: "quote_ready",
+    timeAgo: "Yesterday",
+  },
+];
 
 const Dashboard = () => {
+  const { user } = useAuth();
+  const [metrics, setMetrics] = useState({
+    activeMachines: 5,
+    openEnquiries: 2,
+    quotesInProgress: 2,
+    indicativePipeline: 1593200,
+  });
+  const [recentEnquiries, setRecentEnquiries] = useState(FALLBACK_ENQUIRIES);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    statsApi
+      .getAdminStats()
+      .then((res) => {
+        if (!mounted) return;
+        const data = res?.data || res;
+        if (data) {
+          if (data.metrics) {
+            setMetrics(data.metrics);
+          }
+          if (Array.isArray(data.recentEnquiries) && data.recentEnquiries.length > 0) {
+            setRecentEnquiries(data.recentEnquiries);
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn("Using offline stats fallback in Admin Dashboard:", err.message);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const breadcrumb = (
     <>
       <span>Workspace</span>
@@ -10,6 +82,22 @@ const Dashboard = () => {
       <strong>Overview</strong>
     </>
   );
+
+  const formatPipeline = (val) => {
+    if (!val) return "$0";
+    if (val >= 1000000) return `$${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `$${Math.round(val / 1000)}k`;
+    return `$${val}`;
+  };
+
+  const getStatusBadge = (status) => {
+    const s = (status || "").toLowerCase();
+    if (s.includes("new")) return <span className="status-pill status-new">New enquiry</span>;
+    if (s.includes("review")) return <span className="status-pill status-review">In review</span>;
+    if (s.includes("assign")) return <span className="status-pill status-assigned">Assigned</span>;
+    if (s.includes("quote")) return <span className="status-pill status-quote">Quote ready</span>;
+    return <span className="status-pill">{status || "Active"}</span>;
+  };
 
   return (
     <AdminLayout breadcrumb={breadcrumb}>
@@ -26,7 +114,7 @@ const Dashboard = () => {
               }).toUpperCase()}
             </div>
             <h1>
-              Good morning, Jordan<span>.</span>
+              Good day, {user?.name ? user.name.split(" ")[0] : "Administrator"}<span>.</span>
             </h1>
             <p className="welcome-subtitle">
               Here’s what’s happening across your configurator today.
@@ -47,9 +135,9 @@ const Dashboard = () => {
                 </span>
               </div>
               <div className="stat-number">
-                12{" "}
+                {String(metrics.publishedMachines ?? metrics.activeMachines ?? 5).padStart(2, "0")}{" "}
                 <span className="stat-change">
-                  <i className="bi bi-arrow-up-right"></i> 2
+                  <i className="bi bi-arrow-up-right"></i> Live
                 </span>
               </div>
               <div className="stat-foot">Available in the configurator</div>
@@ -64,12 +152,12 @@ const Dashboard = () => {
                 </span>
               </div>
               <div className="stat-number">
-                28{" "}
+                {String(metrics.openEnquiries ?? 2).padStart(2, "0")}{" "}
                 <span className="stat-change">
-                  <i className="bi bi-arrow-up-right"></i> 12%
+                  <i className="bi bi-arrow-up-right"></i> Active
                 </span>
               </div>
-              <div className="stat-foot">Compared to last month</div>
+              <div className="stat-foot">Awaiting representative review</div>
             </div>
           </article>
           <article className="col-lg-3 col-md-6">
@@ -81,9 +169,10 @@ const Dashboard = () => {
                 </span>
               </div>
               <div className="stat-number">
-                09 <span className="stat-neutral">Across 4 regions</span>
+                {String(metrics.quotesInProgress ?? 2).padStart(2, "0")}{" "}
+                <span className="stat-neutral">Awaiting client</span>
               </div>
-              <div className="stat-foot">Awaiting representative review</div>
+              <div className="stat-foot">Issued quotations in pipeline</div>
             </div>
           </article>
           <article className="col-lg-3 col-md-6">
@@ -95,9 +184,9 @@ const Dashboard = () => {
                 </span>
               </div>
               <div className="stat-number">
-                $482<span className="stat-unit">k</span>{" "}
+                {formatPipeline(metrics.indicativePipeline || metrics.pipelineValue || 1593200)}
                 <span className="stat-change">
-                  <i className="bi bi-arrow-up-right"></i> 8.4%
+                  <i className="bi bi-arrow-up-right"></i> Active
                 </span>
               </div>
               <div className="stat-foot">Based on submitted configurations</div>
@@ -113,7 +202,7 @@ const Dashboard = () => {
                   <div className="panel-kicker">CUSTOMER ACTIVITY</div>
                   <h2>
                     Recent enquiries{" "}
-                    <span className="heading-count">8 new</span>
+                    <span className="heading-count">{recentEnquiries.length} records</span>
                   </h2>
                 </div>
                 <Link className="text-link" to="/enquiries">
@@ -135,146 +224,63 @@ const Dashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td>
-                        <div className="customer-cell">
-                          <span className="avatar avatar-coral">AL</span>
-                          <span>
-                            <strong>Amelia Laurent</strong>
-                            <small>Nordic Materials Co.</small>
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="machine-name">FX-420 Press</span>
-                        <small className="table-sub">Hydraulic forming</small>
-                      </td>
-                      <td>
-                        <span className="region-cell">
-                          <span className="flag">🇫🇷</span> France
-                        </span>
-                      </td>
-                      <td>
-                        <span className="status-pill status-new">
-                          New enquiry
-                        </span>
-                      </td>
-                      <td className="date-cell">12 min ago</td>
-                      <td>
-                        <Link
-                          className="row-action"
-                          to="/enquiry-details#amelia"
-                          aria-label="Open Amelia Laurent enquiry"
-                        >
-                          <i className="bi bi-arrow-up-right"></i>
-                        </Link>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>
-                        <div className="customer-cell">
-                          <span className="avatar avatar-blue">MK</span>
-                          <span>
-                            <strong>Martin Keller</strong>
-                            <small>Keller Anlagenbau</small>
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="machine-name">CR-80 Cutter</span>
-                        <small className="table-sub">Precision cutting</small>
-                      </td>
-                      <td>
-                        <span className="region-cell">
-                          <span className="flag">🇩🇪</span> Germany
-                        </span>
-                      </td>
-                      <td>
-                        <span className="status-pill status-review">
-                          In review
-                        </span>
-                      </td>
-                      <td className="date-cell">48 min ago</td>
-                      <td>
-                        <Link
-                          className="row-action"
-                          to="/enquiry-details#martin"
-                          aria-label="Open Martin Keller enquiry"
-                        >
-                          <i className="bi bi-arrow-up-right"></i>
-                        </Link>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>
-                        <div className="customer-cell">
-                          <span className="avatar avatar-green">SP</span>
-                          <span>
-                            <strong>Sofia Papadakis</strong>
-                            <small>Aegean Industrial</small>
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="machine-name">MX-220 Mixer</span>
-                        <small className="table-sub">Industrial mixing</small>
-                      </td>
-                      <td>
-                        <span className="region-cell">
-                          <span className="flag">🇬🇷</span> Greece
-                        </span>
-                      </td>
-                      <td>
-                        <span className="status-pill status-assigned">
-                          Assigned
-                        </span>
-                      </td>
-                      <td className="date-cell">2 hours ago</td>
-                      <td>
-                        <Link
-                          className="row-action"
-                          to="/enquiry-details#sofia"
-                          aria-label="Open Sofia Papadakis enquiry"
-                        >
-                          <i className="bi bi-arrow-up-right"></i>
-                        </Link>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>
-                        <div className="customer-cell">
-                          <span className="avatar avatar-gold">JT</span>
-                          <span>
-                            <strong>James Thompson</strong>
-                            <small>Thompson &amp; Sons</small>
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="machine-name">FX-420 Press</span>
-                        <small className="table-sub">Hydraulic forming</small>
-                      </td>
-                      <td>
-                        <span className="region-cell">
-                          <span className="flag">🇬🇧</span> United Kingdom
-                        </span>
-                      </td>
-                      <td>
-                        <span className="status-pill status-quote">
-                          Quote requested
-                        </span>
-                      </td>
-                      <td className="date-cell">Yesterday</td>
-                      <td>
-                        <Link
-                          className="row-action"
-                          to="/enquiry-details#james"
-                          aria-label="Open James Thompson enquiry"
-                        >
-                          <i className="bi bi-arrow-up-right"></i>
-                        </Link>
-                      </td>
-                    </tr>
+                    {recentEnquiries.map((enq, index) => {
+                      const custName =
+                        enq.customer?.name ||
+                        enq.fullName ||
+                        `${enq.firstName || ""} ${enq.lastName || ""}`.trim() ||
+                        "Valued Customer";
+                      const custCompany = enq.customer?.company || enq.company || "Direct enquiry";
+                      const custCountry = enq.customer?.country || enq.country || enq.region || "Global";
+                      const machineName =
+                        enq.machine?.name || enq.machineName || "Industrial Machinery";
+                      const machineSku = enq.machine?.sku || enq.machineCode || "Configured System";
+                      const dateDisplay = enq.createdAt
+                        ? new Date(enq.createdAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : enq.timeAgo || "Recently";
+
+                      const initials = custName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .slice(0, 2)
+                        .toUpperCase();
+
+                      return (
+                        <tr key={enq._id || enq.id || index}>
+                          <td>
+                            <div className="customer-cell">
+                              <span className="avatar avatar-coral">{initials}</span>
+                              <span>
+                                <strong>{custName}</strong>
+                                <small>{custCompany}</small>
+                              </span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="machine-name">{machineName}</span>
+                            <small className="table-sub">{machineSku}</small>
+                          </td>
+                          <td>
+                            <span className="region-cell">{custCountry}</span>
+                          </td>
+                          <td>{getStatusBadge(enq.status)}</td>
+                          <td className="date-cell">{dateDisplay}</td>
+                          <td>
+                            <Link
+                              className="row-action"
+                              to={`/enquiry-details#${enq._id || enq.id || enq.referenceNumber}`}
+                              aria-label={`Open ${custName} enquiry`}
+                            >
+                              <i className="bi bi-arrow-up-right"></i>
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -302,50 +308,49 @@ const Dashboard = () => {
               <Link
                 className="machine-visual"
                 to="/machine-details"
-                aria-label="View FX-420 hydraulic press"
+                aria-label="View MS-L4000 Ultra-Speed Fiber Laser Cutter"
               >
                 <img
-                  src="https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&amp;fit=crop&amp;w=1000&amp;q=85"
-                  alt="Industrial engineer inspecting precision machinery"
+                  src="https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=1200&q=80"
+                  alt="Ultra-Speed Fiber Laser Cutter"
                 />
                 <span className="visual-tag">
                   <span></span> LIVE IN CONFIGURATOR
                 </span>
-                <span className="visual-code">FX / 420</span>
+                <span className="visual-code">MS / L4000</span>
               </Link>
               <div className="machine-info">
                 <div>
-                  <div className="machine-category">HYDRAULIC FORMING</div>
-                  <h3>FX-420 Press</h3>
+                  <div className="machine-category">LASER PROCESSING</div>
+                  <h3>MS-L4000 Fiber Laser</h3>
                 </div>
                 <span className="machine-availability">
                   <span></span> Published
                 </span>
               </div>
               <p className="machine-description">
-                High-precision forming with a modular tooling system, built for
-                continuous production.
+                12 kW Fiber Source with linear motor drives achieving 2.8G acceleration and 12-second pallet exchange.
               </p>
               <div className="machine-details">
                 <div>
-                  <span>Starting price</span>
-                  <strong>$84,500</strong>
+                  <span>Base price</span>
+                  <strong>$228,000</strong>
                 </div>
                 <div>
                   <span>Available options</span>
                   <strong>
-                    16 <small>options</small>
+                    6 <small>modules</small>
                   </strong>
                 </div>
                 <div>
-                  <span>Configurations</span>
+                  <span>Pipeline</span>
                   <strong>
-                    146 <small>this month</small>
+                    Active <small>demand</small>
                   </strong>
                 </div>
               </div>
               <Link className="machine-link" to="/machines">
-                Manage machine <i className="bi bi-arrow-right"></i>
+                Manage machines <i className="bi bi-arrow-right"></i>
               </Link>
             </div>
           </article>
@@ -356,23 +361,22 @@ const Dashboard = () => {
             <div className="panel-heading">
               <div>
                 <div className="panel-kicker">OVERVIEW</div>
-                <h2>Enquiry volume</h2>
+                <h2>Pipeline telemetry</h2>
               </div>
               <span className="period-select">
-                Last 7 days <i className="bi bi-chevron-down"></i>
+                Active status <i className="bi bi-chevron-down"></i>
               </span>
             </div>
             <div className="chart-summary">
-              <strong>64</strong>
+              <strong>{metrics.totalEnquiries || 9} Total Enquiries</strong>
               <span>
-                <i className="bi bi-arrow-up-right"></i> 18.6%{" "}
-                <small>vs. previous week</small>
+                <i className="bi bi-arrow-up-right"></i> {metrics.acceptedQuotes || 5} Orders Won
               </span>
             </div>
             <div
               className="chart"
               role="img"
-              aria-label="Enquiry volume rose through the week, peaking at 16 enquiries on Thursday"
+              aria-label="Enquiry telemetry across days"
             >
               <div className="chart-gridline gridline-top"></div>
               <div className="chart-gridline gridline-mid"></div>
@@ -381,34 +385,34 @@ const Dashboard = () => {
               <div className="chart-y-label y-mid">10</div>
               <div className="chart-y-label y-low">0</div>
               <div className="bar-group">
-                <span className="bar" style={{ "--bar-height": "34%" }}></span>
+                <span className="bar" style={{ "--bar-height": "45%" }}></span>
                 <small>FRI</small>
               </div>
               <div className="bar-group">
-                <span className="bar" style={{ "--bar-height": "52%" }}></span>
+                <span className="bar" style={{ "--bar-height": "55%" }}></span>
                 <small>SAT</small>
               </div>
               <div className="bar-group">
-                <span className="bar" style={{ "--bar-height": "43%" }}></span>
+                <span className="bar" style={{ "--bar-height": "40%" }}></span>
                 <small>SUN</small>
               </div>
               <div className="bar-group">
-                <span className="bar" style={{ "--bar-height": "68%" }}></span>
+                <span className="bar" style={{ "--bar-height": "75%" }}></span>
                 <small>MON</small>
               </div>
               <div className="bar-group">
-                <span className="bar" style={{ "--bar-height": "59%" }}></span>
+                <span className="bar" style={{ "--bar-height": "65%" }}></span>
                 <small>TUE</small>
               </div>
               <div className="bar-group">
-                <span className="bar" style={{ "--bar-height": "82%" }}></span>
+                <span className="bar" style={{ "--bar-height": "88%" }}></span>
                 <small>WED</small>
               </div>
               <div className="bar-group bar-current">
                 <span className="bar" style={{ "--bar-height": "100%" }}>
-                  <em>16</em>
+                  <em>{metrics.openEnquiries || 2}</em>
                 </span>
-                <small>THU</small>
+                <small>TODAY</small>
               </div>
             </div>
           </article>
@@ -417,7 +421,7 @@ const Dashboard = () => {
             <div className="panel-heading">
               <div>
                 <div className="panel-kicker">LATEST UPDATES</div>
-                <h2>Activity</h2>
+                <h2>Activity &amp; Telemetry</h2>
               </div>
               <Link className="text-link" to="/enquiries">
                 All activity <i className="bi bi-arrow-right"></i>
@@ -430,35 +434,35 @@ const Dashboard = () => {
                 </span>
                 <div>
                   <p>
-                    <strong>Amelia Laurent</strong> submitted a new enquiry
+                    <strong>David Vance</strong> configured MS-L4000 Laser
                   </p>
-                  <small>FX-420 Press · France</small>
+                  <small>Commercial quote prepared</small>
                 </div>
-                <time>12m</time>
+                <time>Live</time>
               </div>
               <div className="activity-item">
                 <span className="activity-icon activity-slate">
-                  <i className="bi bi-check2-circle"></i>
+                  <i className="bi bi-gear"></i>
                 </span>
                 <div>
                   <p>
-                    New option added to <strong>CR-80 Cutter</strong>
+                    <strong>{metrics.publishedMachines || 5} Machines</strong> active in catalog
                   </p>
-                  <small>Dust extraction unit</small>
+                  <small>Industrial turning, milling &amp; laser</small>
                 </div>
-                <time>1h</time>
+                <time>Live</time>
               </div>
               <div className="activity-item">
                 <span className="activity-icon activity-green">
-                  <i className="bi bi-send"></i>
+                  <i className="bi bi-send-check"></i>
                 </span>
                 <div>
                   <p>
-                    <strong>Quote Q-2048</strong> sent to customer
+                    <strong>{metrics.totalQuotes || 7} Commercial quotes</strong> issued
                   </p>
-                  <small>Martin Keller · Germany</small>
+                  <small>{metrics.acceptedQuotes || 5} accepted by clients</small>
                 </div>
-                <time>3h</time>
+                <time>Live</time>
               </div>
             </div>
           </article>

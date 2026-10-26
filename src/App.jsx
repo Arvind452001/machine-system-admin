@@ -16,7 +16,6 @@ import Dashboard from "./pages/Dashboard";
 import Machines from "./pages/Machines";
 import AddMachine from "./pages/AddMachine";
 import Categories from "./pages/Categories";
-import AddCategory from "./pages/AddCategory";
 import MachineDetails from "./pages/MachineDetails";
 import Cr80Details from "./pages/Cr80Details";
 import Mx220Details from "./pages/Mx220Details";
@@ -71,8 +70,8 @@ function App() {
             <Route path="/machines" element={<Machines />} />
             <Route path="/add-machine" element={<AddMachine />} />
             <Route path="/categories" element={<Categories />} />
-            <Route path="/add-category" element={<AddCategory />} />
-            <Route path="/edit-category/:id" element={<AddCategory />} />
+            <Route path="/add-category" element={<Navigate to="/categories" replace />} />
+            <Route path="/edit-category/:id" element={<Navigate to="/categories" replace />} />
             <Route path="/machine-details" element={<MachineDetails />} />
             <Route path="/cr80-details" element={<Cr80Details />} />
             <Route path="/mx220-details" element={<Mx220Details />} />

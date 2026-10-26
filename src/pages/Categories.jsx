@@ -29,11 +29,8 @@ const Categories = () => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [modalFormData, setModalFormData] = useState({
     name: "",
-    code: "",
-    slug: "",
-    icon: "bi-gear-wide-connected",
     description: "",
-    status: "Active",
+    order: 1,
   });
   const [formError, setFormError] = useState("");
   const [formSubmitting, setFormSubmitting] = useState(false);
@@ -83,11 +80,8 @@ const Categories = () => {
     setEditingCategory(null);
     setModalFormData({
       name: "",
-      code: `CAT-0${categories.length + 1}`,
-      slug: "",
-      icon: "bi-gear-wide-connected",
       description: "",
-      status: "Active",
+      order: categories.length + 1,
     });
     setFormError("");
     setIsModalOpen(true);
@@ -97,11 +91,8 @@ const Categories = () => {
     setEditingCategory(cat);
     setModalFormData({
       name: cat.name || "",
-      code: cat.code || "",
-      slug: cat.slug || "",
-      icon: cat.icon || "bi-gear-wide-connected",
       description: cat.description || "",
-      status: cat.status || "Active",
+      order: cat.order ?? cat.displayOrder ?? 1,
     });
     setFormError("");
     setIsModalOpen(true);
@@ -115,18 +106,10 @@ const Categories = () => {
 
   const handleModalInputChange = (e) => {
     const { name, value } = e.target;
-    setModalFormData((prev) => {
-      const updated = { ...prev, [name]: value };
-      // auto-generate slug if editing name and user hasn't explicitly customized slug
-      if (name === "name" && (!editingCategory || prev.slug === editingCategory.slug)) {
-        updated.slug = value
-          .toLowerCase()
-          .trim()
-          .replace(/\s+/g, "-")
-          .replace(/[^\w-]+/g, "");
-      }
-      return updated;
-    });
+    setModalFormData((prev) => ({
+      ...prev,
+      [name]: name === "order" ? (value === "" ? "" : Number(value)) : value,
+    }));
   };
 
   const handleModalSubmit = async (e) => {
@@ -134,13 +117,19 @@ const Categories = () => {
     setFormError("");
     setFormSubmitting(true);
 
+    const payload = {
+      name: modalFormData.name.trim(),
+      description: (modalFormData.description || "").trim(),
+      order: Number(modalFormData.order) || 1,
+    };
+
     try {
       if (editingCategory) {
-        await categoryService.updateCategory(editingCategory.id, modalFormData);
-        showNotification(`Category "${modalFormData.name}" updated successfully.`);
+        await categoryService.updateCategory(editingCategory._id || editingCategory.id, payload);
+        showNotification(`Category "${payload.name}" updated successfully.`);
       } else {
-        await categoryService.createCategory(modalFormData);
-        showNotification(`Category "${modalFormData.name}" created successfully.`);
+        await categoryService.createCategory(payload);
+        showNotification(`Category "${payload.name}" created successfully.`);
       }
       closeModal();
       loadCategories();
@@ -155,7 +144,7 @@ const Categories = () => {
     if (!categoryToDelete) return;
     setDeleteSubmitting(true);
     try {
-      await categoryService.deleteCategory(categoryToDelete.id);
+      await categoryService.deleteCategory(categoryToDelete._id || categoryToDelete.id);
       showNotification(`Category "${categoryToDelete.name}" was deleted.`, "warning");
       setCategoryToDelete(null);
       loadCategories();
@@ -241,9 +230,6 @@ const Categories = () => {
             <button className="btn btn-accent" onClick={openCreateModal}>
               <i className="bi bi-plus-lg"></i> Add category
             </button>
-            <Link className="btn-subtle" to="/add-category">
-              <i className="bi bi-box-arrow-up-right"></i> Full form
-            </Link>
           </div>
         </section>
 
@@ -274,6 +260,7 @@ const Categories = () => {
               <input
                 aria-label="Search categories"
                 placeholder="Search categories by name, code or desc"
+                
                 type="search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -412,14 +399,6 @@ const Categories = () => {
                           >
                             <i className="bi bi-pencil"></i>
                           </button>
-                          <Link
-                            aria-label={`Full edit page for ${cat.name}`}
-                            className="table-action"
-                            title="Full edit page"
-                            to={`/edit-category/${cat.id}`}
-                          >
-                            <i className="bi bi-arrow-up-right"></i>
-                          </Link>
                           <button
                             aria-label={`Delete ${cat.name}`}
                             className="table-action"
@@ -537,79 +516,40 @@ const Categories = () => {
                 )}
 
                 <div style={{ display: "grid", gap: "16px" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "14px" }}>
-                    <label className="form-field">
-                      <span>Category name *</span>
-                      <input
-                        required
-                        autoFocus
-                        name="name"
-                        placeholder="e.g. Hydraulic forming"
-                        value={modalFormData.name}
-                        onChange={handleModalInputChange}
-                      />
-                    </label>
+                  <label className="form-field">
+                    <span>Category name *</span>
+                    <input
+                      required
+                      autoFocus
+                      name="name"
+                      placeholder="e.g. Hydraulic forming-1"
+                      value={modalFormData.name}
+                      onChange={handleModalInputChange}
+                    />
+                  </label>
 
-                    <label className="form-field">
-                      <span>Code *</span>
-                      <input
-                        required
-                        name="code"
-                        placeholder="e.g. HYD-01"
-                        value={modalFormData.code}
-                        onChange={handleModalInputChange}
-                      />
-                    </label>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                    <label className="form-field">
-                      <span>Slug / URL key</span>
-                      <input
-                        name="slug"
-                        placeholder="e.g. hydraulic-forming"
-                        value={modalFormData.slug}
-                        onChange={handleModalInputChange}
-                      />
-                    </label>
-
-                    <label className="form-field">
-                      <span>Category icon</span>
-                      <select
-                        name="icon"
-                        value={modalFormData.icon}
-                        onChange={handleModalInputChange}
-                      >
-                        {AVAILABLE_ICONS.map((ic) => (
-                          <option key={ic.value} value={ic.value}>
-                            {ic.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
+                  <label className="form-field">
+                    <span>Display order *</span>
+                    <input
+                      type="number"
+                      min="0"
+                      required
+                      name="order"
+                      placeholder="e.g. 1"
+                      value={modalFormData.order}
+                      onChange={handleModalInputChange}
+                    />
+                  </label>
 
                   <label className="form-field">
                     <span>Description</span>
                     <textarea
                       name="description"
                       rows={3}
-                      placeholder="Summary of machinery types and primary manufacturing capabilities..."
+                      placeholder="Describe the machine category and capabilities..."
                       value={modalFormData.description}
                       onChange={handleModalInputChange}
                     ></textarea>
-                  </label>
-
-                  <label className="form-field">
-                    <span>Publication status</span>
-                    <select
-                      name="status"
-                      value={modalFormData.status}
-                      onChange={handleModalInputChange}
-                    >
-                      <option value="Active">Active (visible in machine configurator)</option>
-                      <option value="Draft">Draft (internal staging)</option>
-                    </select>
                   </label>
                 </div>
 

@@ -1,54 +1,80 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
+import { renderingsApi } from "../api/renderingsApi";
 
-const initialRenderings = [
+const FALLBACK_RENDERINGS = [
   {
     id: "rend-1",
-    machine: "FX-420 Press",
-    view: "Primary product view · front and tooling layout",
+    machine: "MS-L4000 Ultra-Speed Fiber Laser Cutter",
+    view: "Primary product view · linear motor drive and pallet enclosure",
     image:
-      "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=900&q=85",
-    alt: "Industrial machine configuration view",
+      "https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=1200&q=80",
+    alt: "MS-L4000 Fiber laser cutting unit",
     status: "Published",
     statusClass: "table-status",
-    updated: "Updated Oct 12, 2026",
+    updated: "Live in catalog",
     viewsCount: "3 views",
     link: "/machine-details",
   },
   {
     id: "rend-2",
-    machine: "CR-80 Cutter",
-    view: "Product view · cutting head and safety guard",
+    machine: "MS-M500 5-Axis Machining Center",
+    view: "Product view · 5-axis trunnion table and spindle head",
     image:
-      "https://images.unsplash.com/photo-1567789884554-0b844b597180?auto=format&fit=crop&w=900&q=85",
-    alt: "Precision industrial equipment",
+      "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1200&q=80",
+    alt: "5-axis machining center",
     status: "Published",
     statusClass: "table-status",
-    updated: "Updated Oct 10, 2026",
+    updated: "Live in catalog",
     viewsCount: "2 views",
-    link: "/cr80-details",
+    link: "/machine-details",
   },
   {
     id: "rend-3",
-    machine: "MX-220 Mixer",
-    view: "Product view · vessel and drive assembly",
+    machine: "MS-V850 Precision Vertical Machining Center",
+    view: "Product view · rigid C-frame casting and tool changer",
     image:
       "https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?auto=format&fit=crop&w=900&q=85",
-    alt: "Engineer working with industrial equipment",
-    status: "In review",
-    statusClass: "table-status status-review",
-    updated: "Updated Oct 08, 2026",
+    alt: "Vertical machining center",
+    status: "Published",
+    statusClass: "table-status",
+    updated: "Live in catalog",
     viewsCount: "1 view",
-    link: "/mx220-details",
+    link: "/machine-details",
   },
 ];
 
 const Renderings = () => {
+  const [renderings, setRenderings] = useState(FALLBACK_RENDERINGS);
   const [searchTerm, setSearchTerm] = useState("");
   const [machineFilter, setMachineFilter] = useState("All machines");
   const [statusFilter, setStatusFilter] = useState("All statuses");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    renderingsApi
+      .getRenderings()
+      .then((res) => {
+        if (!mounted) return;
+        const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        if (list.length > 0) {
+          setRenderings(list);
+        }
+      })
+      .catch((err) => {
+        console.warn("Using offline fallback in Renderings:", err.message);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const breadcrumb = (
     <>
@@ -58,16 +84,20 @@ const Renderings = () => {
     </>
   );
 
-  const filteredRenderings = initialRenderings.filter((rend) => {
+  const filteredRenderings = renderings.filter((rend) => {
+    const mach = rend.machine || rend.machineName || "";
+    const view = rend.view || rend.caption || "";
+    const status = rend.status || "Published";
+
     const matchesSearch =
-      rend.machine.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      rend.view.toLowerCase().includes(searchTerm.toLowerCase());
+      mach.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      view.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesMachine =
-      machineFilter === "All machines" || rend.machine === machineFilter;
+      machineFilter === "All machines" || mach === machineFilter;
 
     const matchesStatus =
-      statusFilter === "All statuses" || rend.status === statusFilter;
+      statusFilter === "All statuses" || status === statusFilter;
 
     return matchesSearch && matchesMachine && matchesStatus;
   });
@@ -82,8 +112,7 @@ const Renderings = () => {
             </div>
             <h1>Renderings</h1>
             <p className="welcome-subtitle">
-              Manage the machine imagery customers see while configuring their
-              build.
+              Manage machine 3D renders, schematic blueprints, and customer visual layers (GET /api/v1/renderings).
             </p>
           </div>
           <div className="header-actions">
@@ -99,7 +128,7 @@ const Renderings = () => {
               <i className="bi bi-search"></i>
               <input
                 aria-label="Search renderings"
-                placeholder="Search renderings"
+                placeholder="Search renderings by machine or angle"
                 type="search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -108,17 +137,18 @@ const Renderings = () => {
           </div>
           <div className="toolbar-right">
             <select
-              aria-label="Filter renderings by machine"
+              aria-label="Filter by machine"
               className="filter-control"
               value={machineFilter}
               onChange={(e) => setMachineFilter(e.target.value)}
             >
               <option>All machines</option>
-              <option>FX-420 Press</option>
-              <option>CR-80 Cutter</option>
+              <option>MS-L4000 Ultra-Speed Fiber Laser Cutter</option>
+              <option>MS-M500 5-Axis Machining Center</option>
+              <option>MS-V850 Precision Vertical Machining Center</option>
             </select>
             <select
-              aria-label="Filter rendering status"
+              aria-label="Filter by status"
               className="filter-control"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -130,19 +160,21 @@ const Renderings = () => {
           </div>
         </section>
 
-        <section className="preview-grid">
+        <section className="rendering-grid">
           {filteredRenderings.map((rend) => (
-            <article className="preview-card" key={rend.id}>
-              <Link className="preview-image" to={rend.link}>
-                <img alt={rend.alt} src={rend.image} />
-                <span className={rend.statusClass}>{rend.status}</span>
-              </Link>
-              <div className="preview-copy">
-                <h2>{rend.machine}</h2>
-                <p>{rend.view}</p>
-                <div className="preview-meta">
-                  <span>{rend.updated}</span>
-                  <strong>{rend.viewsCount}</strong>
+            <article className="rendering-card" key={rend.id || rend._id}>
+              <div className="rendering-media">
+                <img alt={rend.alt || rend.machine} src={rend.image || rend.url} />
+                <span className={rend.statusClass || "table-status"}>{rend.status || "Published"}</span>
+              </div>
+              <div className="rendering-body">
+                <h3>{rend.machine || rend.machineName}</h3>
+                <p>{rend.view || rend.caption || "Industrial perspective render"}</p>
+                <div className="rendering-meta">
+                  <span>{rend.updated || "Active"}</span>
+                  <Link to={rend.link || "/machine-details"}>
+                    View machine <i className="bi bi-arrow-right"></i>
+                  </Link>
                 </div>
               </div>
             </article>

@@ -1,28 +1,75 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
+import { optionsApi } from "../api/optionsApi";
+import { machinesApi } from "../api/machinesApi";
 
 const AddOption = () => {
   const navigate = useNavigate();
+  const [machines, setMachines] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState({ error: "", success: "" });
+
   const [formData, setFormData] = useState({
     name: "",
-    machine: "",
     code: "",
-    price: "",
+    category: "general",
+    priceDelta: "",
     description: "",
-    dependency: "",
-    status: "Draft",
+    machineId: "",
+    status: "active",
   });
+
+  useEffect(() => {
+    machinesApi
+      .getMachines()
+      .then((res) => {
+        const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        setMachines(list);
+      })
+      .catch((err) => {
+        console.warn("Could not load machines in AddOption:", err.message);
+      });
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate("/options");
+    setFeedback({ error: "", success: "" });
+    setSubmitting(true);
+
+    try {
+      // POST /api/v1/options (Admin only)
+      const payload = {
+        name: formData.name.trim(),
+        code: formData.code.trim().toUpperCase(),
+        category: formData.category,
+        priceDelta: Number(formData.priceDelta) || 0,
+        description: formData.description.trim(),
+        machine: formData.machineId || null,
+        status: formData.status,
+        isActive: formData.status === "active",
+      };
+
+      await optionsApi.createOption(payload);
+      setFeedback({ success: "Option successfully created and added to catalog!", error: "" });
+
+      setTimeout(() => {
+        navigate("/options");
+      }, 1200);
+    } catch (err) {
+      setFeedback({
+        error: err.message || "Failed to create option. Please check the code and name fields.",
+        success: "",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const breadcrumb = (
@@ -43,11 +90,21 @@ const AddOption = () => {
             </div>
             <h1>Add option</h1>
             <p className="welcome-subtitle">
-              Define a selectable feature, its price impact, and any
-              compatibility rules.
+              Define a selectable feature, its price impact, and compatibility rules in the live catalog.
             </p>
           </div>
         </section>
+
+        {feedback.error && (
+          <div className="alert alert-danger mb-3" style={{ background: "#fde8e8", color: "#9b1c1c", padding: "12px 16px", borderRadius: "6px" }}>
+            <i className="bi bi-exclamation-triangle me-2"></i> {feedback.error}
+          </div>
+        )}
+        {feedback.success && (
+          <div className="alert alert-success mb-3" style={{ background: "#def7ec", color: "#03543f", padding: "12px 16px", borderRadius: "6px" }}>
+            <i className="bi bi-check-circle me-2"></i> {feedback.success}
+          </div>
+        )}
 
         <form className="form-layout" onSubmit={handleSubmit}>
           <section className="form-panel">
@@ -63,75 +120,68 @@ const AddOption = () => {
                 <span>Option name *</span>
                 <input
                   name="name"
-                  placeholder="e.g. Automatic tool changer"
+                  placeholder="e.g. Ultra-High Pressure Through-Spindle Coolant"
                   required
                   value={formData.name}
                   onChange={handleChange}
                 />
               </label>
               <label className="form-field">
-                <span>Machine *</span>
-                <select
-                  name="machine"
-                  required
-                  value={formData.machine}
-                  onChange={handleChange}
-                >
-                  <option value="">Select machine</option>
-                  <option>FX-420 Press</option>
-                  <option>CR-80 Cutter</option>
-                  <option>MX-220 Mixer</option>
-                  <option>All machines</option>
-                </select>
-              </label>
-              <label className="form-field">
-                <span>Option code</span>
+                <span>Option code *</span>
                 <input
                   name="code"
-                  placeholder="e.g. FX420-ATC"
+                  placeholder="e.g. OPT-COOL-90B"
+                  required
                   value={formData.code}
                   onChange={handleChange}
                 />
               </label>
               <label className="form-field">
-                <span>Price adjustment *</span>
+                <span>Category *</span>
+                <select
+                  name="category"
+                  required
+                  value={formData.category}
+                  onChange={handleChange}
+                >
+                  <option value="general">General</option>
+                  <option value="cooling">Cooling &amp; Fluid</option>
+                  <option value="automation">Automation &amp; Robotics</option>
+                  <option value="tooling">Tooling &amp; Probing</option>
+                  <option value="enclosure">Enclosure &amp; Extraction</option>
+                  <option value="service">Service &amp; Warranty</option>
+                </select>
+              </label>
+              <label className="form-field">
+                <span>Target Machine (Optional)</span>
+                <select
+                  name="machineId"
+                  value={formData.machineId}
+                  onChange={handleChange}
+                >
+                  <option value="">Universal / All Machines</option>
+                  {machines.map((m) => (
+                    <option key={m._id || m.slug} value={m._id || m.slug}>
+                      {m.name} ({m.sku || m.slug})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="form-field">
+                <span>Price adjustment (USD) *</span>
                 <div className="input-prefix">
                   <span>$</span>
                   <input
-                    inputMode="decimal"
-                    name="price"
-                    placeholder="0.00"
-                    step="0.01"
-                    type="number"
+                    aria-label="Price adjustment in dollars"
+                    inputMode="numeric"
+                    name="priceDelta"
+                    placeholder="e.g. 8500"
                     required
-                    value={formData.price}
+                    type="number"
+                    value={formData.priceDelta}
                     onChange={handleChange}
                   />
                 </div>
-              </label>
-              <label className="form-field field-wide">
-                <span>Customer description *</span>
-                <textarea
-                  name="description"
-                  placeholder="Explain what this option does for the customer"
-                  rows={4}
-                  required
-                  value={formData.description}
-                  onChange={handleChange}
-                ></textarea>
-              </label>
-              <label className="form-field">
-                <span>Required option</span>
-                <select
-                  name="dependency"
-                  value={formData.dependency}
-                  onChange={handleChange}
-                >
-                  <option value="">No dependency</option>
-                  <option>Safety enclosure</option>
-                  <option>Duct kit</option>
-                  <option>Service plan</option>
-                </select>
               </label>
               <label className="form-field">
                 <span>Status</span>
@@ -140,20 +190,49 @@ const AddOption = () => {
                   value={formData.status}
                   onChange={handleChange}
                 >
-                  <option>Draft</option>
-                  <option>Active</option>
+                  <option value="active">Active</option>
+                  <option value="draft">Draft</option>
                 </select>
               </label>
             </div>
           </section>
-          <div className="form-actions">
-            <Link className="btn-subtle" to="/options">
+
+          <section className="form-panel">
+            <div className="form-section-heading">
+              <div>
+                <span className="form-kicker">02 / TECHNICAL DESCRIPTION</span>
+                <h2>Customer description</h2>
+              </div>
+            </div>
+            <div className="form-grid">
+              <label className="form-field form-field-full">
+                <span>Description &amp; Specifications</span>
+                <textarea
+                  name="description"
+                  placeholder="Explain benefits, technical specs, pressure ratings, or cycle time impact..."
+                  rows={4}
+                  value={formData.description}
+                  onChange={handleChange}
+                />
+              </label>
+            </div>
+          </section>
+
+          <footer className="form-actions">
+            <Link className="btn btn-outline" to="/options">
               Cancel
             </Link>
-            <button className="btn btn-accent" type="submit">
-              <i className="bi bi-check-lg"></i> Save option
+            <button className="btn btn-accent" type="submit" disabled={submitting}>
+              {submitting ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                  Saving...
+                </>
+              ) : (
+                "Save option"
+              )}
             </button>
-          </div>
+          </footer>
         </form>
 
         <Footer />

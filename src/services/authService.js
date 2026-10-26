@@ -1,43 +1,18 @@
-/**
- * Authentication Service
- * 
- * Handles login, logout, and user session storage.
- * 
- * ---------------------------------------------------------------------------
- * HOW TO SWITCH FROM DUMMY CREDENTIALS TO REAL BACKEND API:
- * ---------------------------------------------------------------------------
- * 1. In the `login` function below, replace the dummy credential check with
- *    your real API call (e.g., using fetch or axios):
- * 
- *    const response = await fetch("https://api.yourbackend.com/api/v1/auth/login", {
- *      method: "POST",
- *      headers: { "Content-Type": "application/json" },
- *      body: JSON.stringify({ email, password }),
- *    });
- *    const data = await response.json();
- *    if (!response.ok) {
- *      throw new Error(data.message || "Invalid credentials");
- *    }
- *    // save data.user and data.token to localStorage
- * ---------------------------------------------------------------------------
- */
+import { authApi } from "../api/authApi";
+import { STORAGE_KEY_TOKEN, STORAGE_KEY_USER } from "../api/axiosInstance";
 
-const STORAGE_KEYS = {
-  USER: "machine_system_auth_user",
-  TOKEN: "machine_system_auth_token",
-};
-
-// Dummy allowed credentials
 export const DUMMY_CREDENTIALS = [
   {
     email: "admin@machinesystems.com",
     password: "admin123",
     user: {
-      id: "usr_01",
-      name: "Jordan Miller",
+      id: "6ad9fc20e39daefd54e568db",
+      name: "System Administrator",
       email: "admin@machinesystems.com",
-      role: "Administrator",
-      initials: "JM",
+      role: "admin",
+      company: "MACHINE Systems Headquarters",
+      phone: "+1 (555) 019-2831",
+      initials: "SA",
     },
   },
   {
@@ -47,25 +22,78 @@ export const DUMMY_CREDENTIALS = [
       id: "usr_02",
       name: "Jordan Miller",
       email: "admin@company.com",
-      role: "Administrator",
+      role: "admin",
       initials: "JM",
     },
   },
 ];
 
 export const authService = {
-  /**
-   * Login with email and password.
-   * Compares against dummy credentials and saves session to localStorage.
-   * When integrating real backend, replace this logic with your API request.
-   */
   login: async ({ email, password, remember = true }) => {
-    // Simulate brief network latency for realistic UX feel
-    await new Promise((resolve) => setTimeout(resolve, 350));
-
     const cleanEmail = (email || "").trim().toLowerCase();
     const cleanPassword = (password || "").trim();
 
+    // 1. Try real backend API
+    try {
+      const response = await authApi.login({
+        email: cleanEmail,
+        password: cleanPassword,
+      });
+
+      const token =
+        response?.token ||
+        response?.data?.token ||
+        response?.accessToken ||
+        response?.data?.accessToken;
+
+      if (token || response?.success) {
+        if (token) {
+          localStorage.setItem(STORAGE_KEY_TOKEN, token);
+        }
+
+        let userProfile = response?.user || response?.data?.user;
+        if (!userProfile && token) {
+          try {
+            const meRes = await authApi.getMe();
+            userProfile = meRes?.data?.user || meRes?.user || meRes?.data;
+          } catch (e) {
+            console.warn("Could not fetch getMe profile after admin login:", e);
+          }
+        }
+
+        const name = userProfile?.name || "Administrator";
+        const initials = name
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase();
+
+        const userData = {
+          ...(userProfile || {}),
+          id: userProfile?._id || userProfile?.id || "admin_usr",
+          name,
+          email: userProfile?.email || cleanEmail,
+          role: userProfile?.role || "admin",
+          company: userProfile?.company || "MACHINE Systems Headquarters",
+          phone: userProfile?.phone || "",
+          initials,
+          loginAt: new Date().toISOString(),
+          remember,
+        };
+
+        localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userData));
+        return {
+          success: true,
+          token,
+          user: userData,
+        };
+      }
+    } catch (apiError) {
+      console.warn("Backend admin login failed, checking fallback credentials:", apiError.message);
+    }
+
+    // 2. Demo fallback
     const matchedAccount = DUMMY_CREDENTIALS.find(
       (cred) =>
         cred.email.toLowerCase() === cleanEmail && cred.password === cleanPassword
@@ -75,16 +103,15 @@ export const authService = {
       throw new Error("Invalid work email or password. Access denied.");
     }
 
-    const dummyToken = `dummy_token_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const dummyToken = `dummy_token_${Date.now()}`;
     const userData = {
       ...matchedAccount.user,
       loginAt: new Date().toISOString(),
       remember,
     };
 
-    // Save dummy auth data into localStorage
-    localStorage.setItem(STORAGE_KEYS.TOKEN, dummyToken);
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
+    localStorage.setItem(STORAGE_KEY_TOKEN, dummyToken);
+    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userData));
 
     return {
       success: true,
@@ -93,39 +120,29 @@ export const authService = {
     };
   },
 
-  /**
-   * Log out the current user and clear stored auth data.
-   */
   logout: () => {
-    localStorage.removeItem(STORAGE_KEYS.TOKEN);
-    localStorage.removeItem(STORAGE_KEYS.USER);
+    localStorage.removeItem(STORAGE_KEY_TOKEN);
+    localStorage.removeItem(STORAGE_KEY_USER);
   },
 
-  /**
-   * Get the current authenticated user from localStorage.
-   */
   getCurrentUser: () => {
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.USER);
+      const data = localStorage.getItem(STORAGE_KEY_USER);
       return data ? JSON.parse(data) : null;
     } catch {
       return null;
     }
   },
 
-  /**
-   * Get the current auth token from localStorage.
-   */
   getToken: () => {
-    return localStorage.getItem(STORAGE_KEYS.TOKEN) || null;
+    return localStorage.getItem(STORAGE_KEY_TOKEN) || null;
   },
 
-  /**
-   * Check if a valid session exists in localStorage.
-   */
   isAuthenticated: () => {
-    const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-    const user = localStorage.getItem(STORAGE_KEYS.USER);
+    const token = localStorage.getItem(STORAGE_KEY_TOKEN);
+    const user = localStorage.getItem(STORAGE_KEY_USER);
     return Boolean(token && user);
   },
 };
+
+export default authService;

@@ -38,10 +38,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     "/pl600-details",
   ].includes(currentPath);
 
-  const isCategoriesActive = [
-    "/categories",
-    "/add-category",
-  ].includes(currentPath) || currentPath.startsWith("/edit-category");
+  const isCategoriesActive = currentPath === "/categories";
 
   const isOptionsActive = [
     "/options",
