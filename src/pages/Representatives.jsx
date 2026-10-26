@@ -135,8 +135,8 @@ const Representatives = () => {
             <strong>{allUsers.length || 8}</strong>
             <small>Customers &amp; staff</small>
           </div>
-          <div className="summary-item">
-            <span>Pending approvals</span>
+          <div className="summary-item" onClick={() => setViewTab("allUsers")} style={{ cursor: "pointer", border: "1px solid #fde68a", background: "#fffbeb" }} title="Click to review pending approvals">
+            <span style={{ color: "#b45309", fontWeight: "600" }}><i className="bi bi-clock-history me-1"></i> Pending approvals</span>
             <strong>
               {allUsers.filter((u) => u.approvalStatus === "pending" || u.isApproved === false).length}
             </strong>
@@ -204,7 +204,24 @@ const Representatives = () => {
                           <span>{rep.openEnquiries || 0} open enquiries</span>
                         </td>
                         <td>
-                          <span className="table-status">Approved</span>
+                          {rep.isApproved === false || rep.approvalStatus === "pending" ? (
+                            <div className="d-flex align-items-center gap-2">
+                              <span className="table-status" style={{ background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }}>
+                                Pending
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-sm text-success"
+                                onClick={() => handleApprove(rep._id, rep.name || rep.email)}
+                                title="Approve representative"
+                                style={{ padding: "4px 10px", fontSize: "12px", border: "1px solid #16a34a", color: "#16a34a", background: "#f0fdf4", borderRadius: "4px", fontWeight: "600", cursor: "pointer" }}
+                              >
+                                <i className="bi bi-check-lg"></i> Approve
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="table-status">Approved</span>
+                          )}
                         </td>
                       </tr>
                     );
