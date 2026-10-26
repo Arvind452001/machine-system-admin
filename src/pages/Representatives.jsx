@@ -142,7 +142,7 @@ const Representatives = () => {
           <div className="summary-item" onClick={() => setViewTab("allUsers")} style={{ cursor: "pointer", border: "1px solid #fde68a", background: "#fffbeb" }} title="Click to review pending approvals">
             <span style={{ color: "#b45309", fontWeight: "600" }}><i className="bi bi-clock-history me-1"></i> Pending approvals</span>
             <strong>
-              {allUsers.filter((u) => u.approvalStatus === "pending" || u.isApproved === false).length}
+              {allUsers.filter((u) => u.role === "representative" && (u.approvalStatus === "pending" || u.isApproved === false)).length}
             </strong>
             <small>Requires Admin review</small>
           </div>
@@ -246,15 +246,17 @@ const Representatives = () => {
                     <th>USER</th>
                     <th>ROLE</th>
                     <th>COMPANY &amp; LOCATION</th>
-                    <th>APPROVAL STATUS</th>
-                    <th>ACTIONS</th>
+                    <th>STATUS</th>
+                    <th>APPROVAL ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody>
                   {allUsers
                     .slice((userPage - 1) * PAGE_SIZE, userPage * PAGE_SIZE)
                     .map((u) => {
-                    const isApproved = u.isApproved !== false && u.approvalStatus !== "rejected" && u.approvalStatus !== "pending";
+                    const isRep = u.role === "representative";
+                    const isPendingRep = isRep && (u.isApproved === false || u.approvalStatus === "pending");
+                    const isRejectedRep = isRep && u.approvalStatus === "rejected";
 
                     return (
                       <tr key={u._id || u.email}>
@@ -272,29 +274,69 @@ const Representatives = () => {
                           <span className="cell-sub">{u.country || u.region || "Global"}</span>
                         </td>
                         <td>
-                          <span className={`table-status ${isApproved ? "" : "status-draft"}`}>
-                            {u.approvalStatus || (isApproved ? "Approved" : "Pending")}
-                          </span>
+                          {isRep ? (
+                            isPendingRep ? (
+                              <span className="table-status" style={{ background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }}>
+                                Pending Approval
+                              </span>
+                            ) : isRejectedRep ? (
+                              <span className="table-status status-closed">
+                                Rejected
+                              </span>
+                            ) : (
+                              <span className="table-status">
+                                Approved
+                              </span>
+                            )
+                          ) : (
+                            <span className="table-status" style={{ background: "#edf3ed", color: "#27624c" }}>
+                              Active
+                            </span>
+                          )}
                         </td>
                         <td>
-                          <div className="d-flex gap-2">
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline text-success"
-                              onClick={() => handleApprove(u._id, u.name || u.email)}
-                              title="Approve user"
-                            >
-                              <i className="bi bi-check-lg"></i> Approve
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline text-danger"
-                              onClick={() => handleReject(u._id, u.name || u.email)}
-                              title="Reject user"
-                            >
-                              <i className="bi bi-x-lg"></i> Reject
-                            </button>
-                          </div>
+                          {isRep ? (
+                            isPendingRep ? (
+                              <div className="d-flex gap-2">
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline text-success"
+                                  onClick={() => handleApprove(u._id, u.name || u.email)}
+                                  title="Approve representative"
+                                  style={{ padding: "4px 10px", fontSize: "11px", fontWeight: "600", border: "1px solid #16a34a", color: "#16a34a" }}
+                                >
+                                  <i className="bi bi-check-lg"></i> Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline text-danger"
+                                  onClick={() => handleReject(u._id, u.name || u.email)}
+                                  title="Reject representative"
+                                  style={{ padding: "4px 10px", fontSize: "11px", fontWeight: "600", border: "1px solid #dc2626", color: "#dc2626" }}
+                                >
+                                  <i className="bi bi-x-lg"></i> Reject
+                                </button>
+                              </div>
+                            ) : isRejectedRep ? (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline text-success"
+                                onClick={() => handleApprove(u._id, u.name || u.email)}
+                                title="Re-approve representative"
+                                style={{ padding: "4px 10px", fontSize: "11px", fontWeight: "600" }}
+                              >
+                                <i className="bi bi-arrow-repeat"></i> Re-approve
+                              </button>
+                            ) : (
+                              <span className="cell-sub" style={{ color: "#16a34a", fontWeight: "600" }}>
+                                <i className="bi bi-check2-circle me-1"></i>Approved
+                              </span>
+                            )
+                          ) : (
+                            <span className="cell-sub" style={{ color: "#85867f" }}>
+                              Auto-verified (No approval needed)
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );
