@@ -53,6 +53,8 @@ const Pricing = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [machineFilter, setMachineFilter] = useState("All machines");
   const [typeFilter, setTypeFilter] = useState("All price types");
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 5;
 
   const breadcrumb = (
     <>
@@ -124,7 +126,7 @@ const Pricing = () => {
                 placeholder="Search machine or option"
                 type="search"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               />
             </label>
           </div>
@@ -166,7 +168,7 @@ const Pricing = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredRules.map((rule) => (
+                {filteredRules.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((rule) => (
                   <tr key={rule.id}>
                     <td>
                       <strong>{rule.name}</strong>
@@ -186,7 +188,7 @@ const Pricing = () => {
               </tbody>
             </table>
           </div>
-          <Pagination currentPage={currentPage} totalItems={rules.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} itemName="price rules" />
+          <Pagination currentPage={currentPage} totalItems={filteredRules.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} itemName="price rules" />
         </section>
 
         <Footer />

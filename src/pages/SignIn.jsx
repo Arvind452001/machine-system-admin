@@ -11,6 +11,7 @@ const SignIn = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -114,20 +115,46 @@ const SignIn = () => {
             </div>
             <div>
               <label htmlFor="password">Password</label>
-              <input
-                autoComplete="current-password"
-                id="password"
-                name="password"
-                placeholder="Enter your password"
-                type="password"
-                value={password}
-                className={error ? "input-has-error" : ""}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (error) setError("");
-                }}
-                disabled={isSubmitting}
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  autoComplete="current-password"
+                  id="password"
+                  name="password"
+                  placeholder="Enter your password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  className={error ? "input-has-error" : ""}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (error) setError("");
+                  }}
+                  disabled={isSubmitting}
+                  style={{ paddingRight: "44px" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: "absolute",
+                    right: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    color: "#85867f",
+                    cursor: "pointer",
+                    fontSize: "1.15rem",
+                    padding: "4px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  title={showPassword ? "Hide password" : "Show password"}
+                >
+                  <i className={showPassword ? "bi bi-eye-slash" : "bi bi-eye"}></i>
+                </button>
+              </div>
             </div>
             <div className="login-form-row">
               <label className="remember-option">

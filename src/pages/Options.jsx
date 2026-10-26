@@ -82,6 +82,8 @@ const Options = () => {
   const [categoryFilter, setCategoryFilter] = useState("All categories");
   const [statusFilter, setStatusFilter] = useState("All statuses");
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 8;
 
   // Quick Rule Test Modal State
   const [showValidator, setShowValidator] = useState(false);
@@ -346,7 +348,7 @@ const Options = () => {
                 placeholder="Search options by name, code or category"
                 type="search"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               />
             </label>
           </div>

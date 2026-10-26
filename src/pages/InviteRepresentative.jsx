@@ -19,6 +19,7 @@ const InviteRepresentative = () => {
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [feedback, setFeedback] = useState({ error: "", success: "" });
 
   const handleChange = (e) => {
@@ -147,13 +148,39 @@ const InviteRepresentative = () => {
               </label>
               <label className="form-field">
                 <span>Temporary password</span>
-                <input
-                  name="password"
-                  placeholder="Default: rep12345"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                />
+                <div style={{ position: "relative" }}>
+                  <input
+                    name="password"
+                    placeholder="Default: rep12345"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handleChange}
+                    style={{ paddingRight: "44px", width: "100%" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: "absolute",
+                      right: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      color: "#85867f",
+                      cursor: "pointer",
+                      fontSize: "1.15rem",
+                      padding: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    <i className={showPassword ? "bi bi-eye-slash" : "bi bi-eye"}></i>
+                  </button>
+                </div>
               </label>
               <label className="form-field">
                 <span>Phone</span>

@@ -37,6 +37,8 @@ const Quotes = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All statuses");
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 6;
   const [exporting, setExporting] = useState(false);
   const [feedback, setFeedback] = useState({ error: "", success: "" });
 
@@ -218,7 +220,7 @@ const Quotes = () => {
                 placeholder="Search by quote #, customer, company, or machine"
                 type="search"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               />
             </label>
           </div>
@@ -227,7 +229,7 @@ const Quotes = () => {
               aria-label="Filter by status"
               className="filter-control"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
             >
               <option>All statuses</option>
               <option>In preparation</option>
