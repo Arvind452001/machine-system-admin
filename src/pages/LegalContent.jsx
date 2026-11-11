@@ -7,6 +7,7 @@ const PAGES = [
   { slug: "privacy", label: "Privacy Policy", icon: "bi-shield-check", clientPath: "/privacy" },
   { slug: "terms", label: "Terms & Conditions", icon: "bi-file-earmark-text", clientPath: "/terms" },
   { slug: "about", label: "About Us Page", icon: "bi-building", clientPath: "/about" },
+  { slug: "how-it-works", label: "How It Works", icon: "bi-diagram-3", clientPath: "/how-it-works" },
 ];
 
 const defaultAboutState = {
@@ -17,6 +18,32 @@ const defaultAboutState = {
       "We bring industrial machinery and practical guidance together, helping you explore options that make sense for your work—not just a catalogue.",
   },
   stories: [],
+};
+
+const defaultHowItWorksState = {
+  hero: {
+    eyebrow: "A clearer path to the right machine",
+    title: "From first look to the right quote.",
+    subtitle:
+      "Explore machine platforms, shape a configuration around your process, and speak with a representative before you make a decision.",
+    artTag: "MACHINE SYSTEMS / YOUR PROCESS",
+    artText: "Configure. Compare. Connect.",
+  },
+  sectionHeading: {
+    eyebrow: "Four straightforward steps",
+    title: "Good decisions start with good questions.",
+    description:
+      "There is no need to have every detail figured out before you begin. Use the catalogue to explore, then bring your priorities to a local expert.",
+  },
+  steps: [],
+  bottomSection: {
+    eyebrow: "Before you enquire",
+    title: "Bring what you know.",
+    description:
+      "Helpful details can include the material and dimensions of your parts, target tolerances, current process, expected volumes, and any space or installation considerations. If you are still exploring, that is a good place to start too.",
+    linkText: "Explore the machine range",
+    linkUrl: "/machines",
+  },
 };
 
 const LegalContent = () => {
@@ -33,8 +60,9 @@ const LegalContent = () => {
   const [publishedAt, setPublishedAt] = useState(null);
   const [lastUpdatedBy, setLastUpdatedBy] = useState(null);
 
-  // Dedicated About state
+  // Dedicated States
   const [aboutState, setAboutState] = useState(defaultAboutState);
+  const [howItWorksState, setHowItWorksState] = useState(defaultHowItWorksState);
 
   const fetchContent = (slug) => {
     setLoading(true);
@@ -65,6 +93,22 @@ const LegalContent = () => {
             } catch (e) {
               console.warn("Could not parse about JSON:", e);
             }
+          } else if (slug === "how-it-works") {
+            try {
+              if (typeof item.body === "string" && item.body.trim().startsWith("{")) {
+                const parsed = JSON.parse(item.body);
+                setHowItWorksState({
+                  hero: parsed.hero || defaultHowItWorksState.hero,
+                  sectionHeading: parsed.sectionHeading || defaultHowItWorksState.sectionHeading,
+                  steps: Array.isArray(parsed.steps) ? parsed.steps : defaultHowItWorksState.steps,
+                  bottomSection: parsed.bottomSection || defaultHowItWorksState.bottomSection,
+                });
+              } else if (typeof item.body === "object") {
+                setHowItWorksState(item.body);
+              }
+            } catch (e) {
+              console.warn("Could not parse how-it-works JSON:", e);
+            }
           }
         }
       })
@@ -90,6 +134,9 @@ const LegalContent = () => {
     if (activeSlug === "about") {
       if (!finalTitle) finalTitle = "About MACHINE Systems";
       finalBody = JSON.stringify(aboutState, null, 2);
+    } else if (activeSlug === "how-it-works") {
+      if (!finalTitle) finalTitle = "How It Works";
+      finalBody = JSON.stringify(howItWorksState, null, 2);
     } else {
       if (!finalTitle || !finalBody) {
         setError("Title and content body are required.");
@@ -266,6 +313,63 @@ const LegalContent = () => {
     });
   };
 
+  // How It Works helpers
+  const handleHowItWorksChange = (section, field, val) => {
+    setHowItWorksState((prev) => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [field]: val,
+      },
+    }));
+  };
+
+  const handleStepChange = (index, field, val) => {
+    setHowItWorksState((prev) => {
+      const updated = [...prev.steps];
+      updated[index] = {
+        ...updated[index],
+        [field]: val,
+      };
+      return { ...prev, steps: updated };
+    });
+  };
+
+  const handleAddStep = () => {
+    const newIndex = (howItWorksState.steps || []).length + 1;
+    const newStep = {
+      id: `step-${Date.now()}`,
+      stepTag: `0${newIndex} / NEW STEP`,
+      title: "Step Title",
+      description: "Describe what the customer does in this step.",
+    };
+    setHowItWorksState((prev) => ({
+      ...prev,
+      steps: [...(prev.steps || []), newStep],
+    }));
+  };
+
+  const handleRemoveStep = (index) => {
+    if (window.confirm("Delete this process step?")) {
+      setHowItWorksState((prev) => ({
+        ...prev,
+        steps: prev.steps.filter((_, idx) => idx !== index),
+      }));
+    }
+  };
+
+  const handleMoveStep = (index, direction) => {
+    setHowItWorksState((prev) => {
+      const steps = [...prev.steps];
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= steps.length) return prev;
+      const temp = steps[index];
+      steps[index] = steps[targetIndex];
+      steps[targetIndex] = temp;
+      return { ...prev, steps };
+    });
+  };
+
   const breadcrumb = (
     <>
       <span>Workspace</span>
@@ -287,7 +391,7 @@ const LegalContent = () => {
             </div>
             <h1>Website &amp; Policy Content</h1>
             <p className="welcome-subtitle">
-              Manage public customer-facing pages including About Us, Privacy Policy, and Terms &amp; Conditions.
+              Manage public customer-facing pages including How It Works, About Us, Privacy Policy, and Terms &amp; Conditions.
             </p>
           </div>
           <div className="content-header-actions" style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
@@ -340,7 +444,7 @@ const LegalContent = () => {
         </section>
 
         {/* Page Selector Tabs */}
-        <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.5rem", borderBottom: "1px solid #e5e7eb", paddingBottom: "0.75rem" }}>
+        <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.5rem", borderBottom: "1px solid #e5e7eb", paddingBottom: "0.75rem", overflowX: "auto" }}>
           {PAGES.map((page) => {
             const isSelected = activeSlug === page.slug;
             return (
@@ -361,6 +465,7 @@ const LegalContent = () => {
                   fontSize: "0.875rem",
                   cursor: "pointer",
                   transition: "all 0.15s ease",
+                  whiteSpace: "nowrap",
                 }}
               >
                 <i className={`bi ${page.icon}`}></i>
@@ -431,7 +536,13 @@ const LegalContent = () => {
           </div>
           <div>
             <strong style={{ color: "#111827" }}>Type:</strong>{" "}
-            <span>{activeSlug === "about" ? `${aboutState.stories?.length || 0} Stories` : `${sectionsList.length} Sections`}</span>
+            <span>
+              {activeSlug === "about"
+                ? `${aboutState.stories?.length || 0} Stories`
+                : activeSlug === "how-it-works"
+                ? `${howItWorksState.steps?.length || 0} Steps`
+                : `${sectionsList.length} Sections`}
+            </span>
           </div>
           <div>
             <strong style={{ color: "#111827" }}>Status:</strong>{" "}
@@ -487,7 +598,7 @@ const LegalContent = () => {
             </button>
           </div>
 
-          {activeTab === "edit" && activeSlug !== "about" && (
+          {activeTab === "edit" && (activeSlug === "privacy" || activeSlug === "terms") && (
             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
               <button
                 type="button"
@@ -526,6 +637,17 @@ const LegalContent = () => {
               <i className="bi bi-plus-lg"></i> Add New Story Card
             </button>
           )}
+
+          {activeTab === "edit" && activeSlug === "how-it-works" && (
+            <button
+              type="button"
+              onClick={handleAddStep}
+              className="btn btn-sm btn-outline-dark"
+              style={{ fontSize: "0.8rem", fontWeight: 600 }}
+            >
+              <i className="bi bi-plus-lg"></i> Add New Process Step
+            </button>
+          )}
         </div>
 
         {/* Main Content Area */}
@@ -537,7 +659,382 @@ const LegalContent = () => {
             <p style={{ marginTop: "1rem", color: "#6b7280" }}>Loading content...</p>
           </div>
         ) : activeTab === "edit" ? (
-          activeSlug === "about" ? (
+          activeSlug === "how-it-works" ? (
+            /* HOW IT WORKS DEDICATED CMS */
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              {/* Hero Settings */}
+              <div
+                style={{
+                  background: "#fff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  padding: "1.5rem",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                }}
+              >
+                <div style={{ borderBottom: "1px solid #f3f4f6", paddingBottom: "0.75rem", marginBottom: "1.25rem" }}>
+                  <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0, color: "#111827" }}>
+                    <i className="bi bi-card-heading" style={{ marginRight: "8px", color: "#c0392b" }}></i>
+                    Hero Section
+                  </h3>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "1rem", marginBottom: "1rem" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#4b5563", marginBottom: "0.35rem" }}>
+                      Hero Eyebrow Tag
+                    </label>
+                    <input
+                      type="text"
+                      value={howItWorksState.hero?.eyebrow || ""}
+                      onChange={(e) => handleHowItWorksChange("hero", "eyebrow", e.target.value)}
+                      placeholder="e.g. A clearer path to the right machine"
+                      style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #d1d5db", borderRadius: "6px" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#4b5563", marginBottom: "0.35rem" }}>
+                      Main Headline
+                    </label>
+                    <input
+                      type="text"
+                      value={howItWorksState.hero?.title || ""}
+                      onChange={(e) => handleHowItWorksChange("hero", "title", e.target.value)}
+                      placeholder="e.g. From first look to the right quote."
+                      style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #d1d5db", borderRadius: "6px", fontWeight: 600 }}
+                    />
+                  </div>
+                </div>
+                <div style={{ marginBottom: "1rem" }}>
+                  <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#4b5563", marginBottom: "0.35rem" }}>
+                    Hero Subtitle
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={howItWorksState.hero?.subtitle || ""}
+                    onChange={(e) => handleHowItWorksChange("hero", "subtitle", e.target.value)}
+                    placeholder="Brief intro description..."
+                    style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #d1d5db", borderRadius: "6px", lineHeight: "1.5" }}
+                  />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#4b5563", marginBottom: "0.35rem" }}>
+                      Hero Badge Art Tag
+                    </label>
+                    <input
+                      type="text"
+                      value={howItWorksState.hero?.artTag || ""}
+                      onChange={(e) => handleHowItWorksChange("hero", "artTag", e.target.value)}
+                      placeholder="e.g. MACHINE SYSTEMS / YOUR PROCESS"
+                      style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #d1d5db", borderRadius: "6px" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#4b5563", marginBottom: "0.35rem" }}>
+                      Hero Badge Slogan
+                    </label>
+                    <input
+                      type="text"
+                      value={howItWorksState.hero?.artText || ""}
+                      onChange={(e) => handleHowItWorksChange("hero", "artText", e.target.value)}
+                      placeholder="e.g. Configure. Compare. Connect."
+                      style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #d1d5db", borderRadius: "6px" }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Steps Section Heading Settings */}
+              <div
+                style={{
+                  background: "#fff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  padding: "1.5rem",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                }}
+              >
+                <div style={{ borderBottom: "1px solid #f3f4f6", paddingBottom: "0.75rem", marginBottom: "1.25rem" }}>
+                  <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0, color: "#111827" }}>
+                    <i className="bi bi-list-ol" style={{ marginRight: "8px", color: "#c0392b" }}></i>
+                    Steps Section Header
+                  </h3>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "1rem", marginBottom: "1rem" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#4b5563", marginBottom: "0.35rem" }}>
+                      Eyebrow Tag
+                    </label>
+                    <input
+                      type="text"
+                      value={howItWorksState.sectionHeading?.eyebrow || ""}
+                      onChange={(e) => handleHowItWorksChange("sectionHeading", "eyebrow", e.target.value)}
+                      placeholder="e.g. Four straightforward steps"
+                      style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #d1d5db", borderRadius: "6px" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#4b5563", marginBottom: "0.35rem" }}>
+                      Section Headline
+                    </label>
+                    <input
+                      type="text"
+                      value={howItWorksState.sectionHeading?.title || ""}
+                      onChange={(e) => handleHowItWorksChange("sectionHeading", "title", e.target.value)}
+                      placeholder="e.g. Good decisions start with good questions."
+                      style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #d1d5db", borderRadius: "6px", fontWeight: 600 }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#4b5563", marginBottom: "0.35rem" }}>
+                    Section Description
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={howItWorksState.sectionHeading?.description || ""}
+                    onChange={(e) => handleHowItWorksChange("sectionHeading", "description", e.target.value)}
+                    placeholder="Short description..."
+                    style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #d1d5db", borderRadius: "6px" }}
+                  />
+                </div>
+              </div>
+
+              {/* Process Steps Cards List */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0, color: "#111827" }}>
+                    Process Steps ({(howItWorksState.steps || []).length})
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={handleAddStep}
+                    className="btn btn-sm btn-primary"
+                    style={{ background: "#c0392b", borderColor: "#c0392b", fontSize: "0.8rem" }}
+                  >
+                    <i className="bi bi-plus-lg"></i> Add Step
+                  </button>
+                </div>
+
+                {(howItWorksState.steps || []).map((step, index) => (
+                  <div
+                    key={step.id || index}
+                    style={{
+                      background: "#fff",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "8px",
+                      padding: "1.25rem",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        borderBottom: "1px solid #f3f4f6",
+                        paddingBottom: "0.6rem",
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        <span
+                          style={{
+                            background: "#111827",
+                            color: "#fff",
+                            fontSize: "0.75rem",
+                            fontWeight: 700,
+                            padding: "3px 8px",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          Step {index + 1}
+                        </span>
+                        <strong style={{ fontSize: "0.95rem", color: "#111827" }}>
+                          {step.stepTag || `0${index + 1} / STEP`}
+                        </strong>
+                      </div>
+                      <div style={{ display: "flex", gap: "0.4rem" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveStep(index, -1)}
+                          disabled={index === 0}
+                          className="btn btn-sm btn-outline-secondary"
+                          title="Move Up"
+                        >
+                          <i className="bi bi-arrow-up"></i>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveStep(index, 1)}
+                          disabled={index === howItWorksState.steps.length - 1}
+                          className="btn btn-sm btn-outline-secondary"
+                          title="Move Down"
+                        >
+                          <i className="bi bi-arrow-down"></i>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveStep(index)}
+                          className="btn btn-sm btn-outline-danger"
+                          title="Delete Step"
+                        >
+                          <i className="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "1rem", marginBottom: "0.75rem" }}>
+                      <div>
+                        <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#4b5563", marginBottom: "0.35rem" }}>
+                          Step Tag Label
+                        </label>
+                        <input
+                          type="text"
+                          value={step.stepTag || ""}
+                          onChange={(e) => handleStepChange(index, "stepTag", e.target.value)}
+                          placeholder="e.g. 01 / SELECT PLATFORM"
+                          style={{ width: "100%", padding: "0.55rem 0.75rem", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "0.85rem" }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#4b5563", marginBottom: "0.35rem" }}>
+                          Step Title
+                        </label>
+                        <input
+                          type="text"
+                          value={step.title || ""}
+                          onChange={(e) => handleStepChange(index, "title", e.target.value)}
+                          placeholder="e.g. Choose a machine"
+                          style={{ width: "100%", padding: "0.55rem 0.75rem", border: "1px solid #d1d5db", borderRadius: "6px", fontWeight: 600 }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#4b5563", marginBottom: "0.35rem" }}>
+                        Step Description
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={step.description || ""}
+                        onChange={(e) => handleStepChange(index, "description", e.target.value)}
+                        placeholder="Detail process explanation..."
+                        style={{ width: "100%", padding: "0.55rem 0.75rem", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "0.85rem", lineHeight: "1.5" }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Bottom Section (Before you enquire) */}
+              <div
+                style={{
+                  background: "#fff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  padding: "1.5rem",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                }}
+              >
+                <div style={{ borderBottom: "1px solid #f3f4f6", paddingBottom: "0.75rem", marginBottom: "1.25rem" }}>
+                  <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0, color: "#111827" }}>
+                    <i className="bi bi-box-arrow-in-down-right" style={{ marginRight: "8px", color: "#c0392b" }}></i>
+                    Bottom Section (Before You Enquire)
+                  </h3>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "1rem", marginBottom: "1rem" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#4b5563", marginBottom: "0.35rem" }}>
+                      Eyebrow Tag
+                    </label>
+                    <input
+                      type="text"
+                      value={howItWorksState.bottomSection?.eyebrow || ""}
+                      onChange={(e) => handleHowItWorksChange("bottomSection", "eyebrow", e.target.value)}
+                      placeholder="e.g. Before you enquire"
+                      style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #d1d5db", borderRadius: "6px" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#4b5563", marginBottom: "0.35rem" }}>
+                      Headline
+                    </label>
+                    <input
+                      type="text"
+                      value={howItWorksState.bottomSection?.title || ""}
+                      onChange={(e) => handleHowItWorksChange("bottomSection", "title", e.target.value)}
+                      placeholder="e.g. Bring what you know."
+                      style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #d1d5db", borderRadius: "6px", fontWeight: 600 }}
+                    />
+                  </div>
+                </div>
+                <div style={{ marginBottom: "1rem" }}>
+                  <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#4b5563", marginBottom: "0.35rem" }}>
+                    Description
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={howItWorksState.bottomSection?.description || ""}
+                    onChange={(e) => handleHowItWorksChange("bottomSection", "description", e.target.value)}
+                    placeholder="Advisory notes for customer..."
+                    style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #d1d5db", borderRadius: "6px" }}
+                  />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#4b5563", marginBottom: "0.35rem" }}>
+                      Button Link Text
+                    </label>
+                    <input
+                      type="text"
+                      value={howItWorksState.bottomSection?.linkText || ""}
+                      onChange={(e) => handleHowItWorksChange("bottomSection", "linkText", e.target.value)}
+                      placeholder="e.g. Explore the machine range"
+                      style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #d1d5db", borderRadius: "6px" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#4b5563", marginBottom: "0.35rem" }}>
+                      Button Target URL
+                    </label>
+                    <input
+                      type="text"
+                      value={howItWorksState.bottomSection?.linkUrl || ""}
+                      onChange={(e) => handleHowItWorksChange("bottomSection", "linkUrl", e.target.value)}
+                      placeholder="e.g. /machines"
+                      style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #d1d5db", borderRadius: "6px" }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1rem" }}>
+                <button
+                  type="button"
+                  onClick={() => fetchContent("how-it-works")}
+                  className="btn btn-outline-secondary"
+                  style={{ fontSize: "0.85rem" }}
+                >
+                  Reset Changes
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="btn btn-primary"
+                  style={{
+                    background: "#c0392b",
+                    borderColor: "#c0392b",
+                    fontSize: "0.85rem",
+                    padding: "0.6rem 1.5rem",
+                  }}
+                >
+                  {saving ? "Saving Changes..." : "Save & Publish How It Works"}
+                </button>
+              </div>
+            </div>
+          ) : activeSlug === "about" ? (
             /* ABOUT US VISUAL STORY CMS */
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               {/* Hero Settings Card */}
@@ -974,7 +1471,93 @@ const LegalContent = () => {
           )
         ) : (
           /* Live Customer Preview */
-          activeSlug === "about" ? (
+          activeSlug === "how-it-works" ? (
+            /* HOW IT WORKS PREVIEW */
+            <div
+              style={{
+                background: "#fff",
+                border: "1px solid #e5e7eb",
+                borderRadius: "8px",
+                padding: "2rem",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+              }}
+            >
+              <div style={{ borderBottom: "1px solid #e5e7eb", paddingBottom: "1.5rem", marginBottom: "2rem" }}>
+                <span style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", color: "#c0392b", fontWeight: 700 }}>
+                  HOW IT WORKS PREVIEW
+                </span>
+                <p style={{ margin: "0.5rem 0 0.25rem", color: "#c0392b", fontSize: "0.85rem", fontWeight: 600 }}>
+                  {howItWorksState.hero?.eyebrow}
+                </p>
+                <h1 style={{ fontSize: "2.2rem", fontWeight: 700, margin: "0.5rem 0", color: "#111827" }}>
+                  {howItWorksState.hero?.title}
+                </h1>
+                <p style={{ fontSize: "1.05rem", color: "#6b7280", maxWidth: "800px", lineHeight: "1.6" }}>
+                  {howItWorksState.hero?.subtitle}
+                </p>
+              </div>
+
+              {/* Steps heading */}
+              <div style={{ marginBottom: "2rem" }}>
+                <p style={{ color: "#c0392b", fontSize: "0.8rem", fontWeight: 600, margin: "0 0 0.25rem" }}>
+                  {howItWorksState.sectionHeading?.eyebrow}
+                </p>
+                <h2 style={{ fontSize: "1.6rem", fontWeight: 700, color: "#111827", margin: "0 0 0.5rem" }}>
+                  {howItWorksState.sectionHeading?.title}
+                </h2>
+                <p style={{ color: "#6b7280", fontSize: "0.95rem" }}>
+                  {howItWorksState.sectionHeading?.description}
+                </p>
+              </div>
+
+              {/* Steps Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.5rem", marginBottom: "3rem" }}>
+                {(howItWorksState.steps || []).map((step, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "6px",
+                      padding: "1.25rem",
+                      background: "#fafafa",
+                    }}
+                  >
+                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#c0392b", letterSpacing: "1px", display: "block", marginBottom: "0.5rem" }}>
+                      {step.stepTag}
+                    </span>
+                    <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#111827", marginBottom: "0.5rem" }}>
+                      {step.title}
+                    </h3>
+                    <p style={{ fontSize: "0.875rem", color: "#6b7280", lineHeight: "1.6", margin: 0 }}>
+                      {step.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Bottom split */}
+              <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "2rem", display: "grid", gridTemplateColumns: "1fr 2fr", gap: "2rem" }}>
+                <div>
+                  <span style={{ fontSize: "0.8rem", color: "#c0392b", fontWeight: 600, display: "block", marginBottom: "0.25rem" }}>
+                    {howItWorksState.bottomSection?.eyebrow}
+                  </span>
+                  <h2 style={{ fontSize: "1.4rem", fontWeight: 700, color: "#111827" }}>
+                    {howItWorksState.bottomSection?.title}
+                  </h2>
+                </div>
+                <div>
+                  <p style={{ fontSize: "0.95rem", color: "#4b5563", lineHeight: "1.7", marginBottom: "1rem" }}>
+                    {howItWorksState.bottomSection?.description}
+                  </p>
+                  {howItWorksState.bottomSection?.linkText && howItWorksState.bottomSection?.linkUrl && (
+                    <span style={{ color: "#c0392b", fontWeight: 600, fontSize: "0.9rem", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                      {howItWorksState.bottomSection?.linkText} <i className="bi bi-arrow-right"></i>
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : activeSlug === "about" ? (
             /* ABOUT PREVIEW */
             <div
               style={{
