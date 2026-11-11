@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { categoryService } from "../services/categoryService";
 import { enquiriesApi } from "../api/enquiriesApi";
 import { machinesApi } from "../api/machinesApi";
+import { reviewsApi } from "../api/reviewsApi";
 
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
@@ -13,6 +14,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   });
   const [enquiryCount, setEnquiryCount] = useState(0);
   const [machineCount, setMachineCount] = useState(0);
+  const [reviewCount, setReviewCount] = useState(0);
 
   useEffect(() => {
     const updateCount = () => {
@@ -39,6 +41,15 @@ const Sidebar = ({ isOpen, onClose }) => {
       .then((res) => {
         const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
         setMachineCount(list.length);
+      })
+      .catch(() => {});
+
+    // Fetch live reviews count
+    reviewsApi
+      .getAllReviews()
+      .then((res) => {
+        const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        setReviewCount(list.length);
       })
       .catch(() => {});
 
@@ -95,6 +106,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     "/legal-content",
     "/content",
   ].includes(currentPath);
+
+  const isReviewsActive = currentPath === "/reviews";
 
   const isEnquiriesActive = [
     "/enquiries",
@@ -186,6 +199,15 @@ const Sidebar = ({ isOpen, onClose }) => {
         >
           <i className="bi bi-file-earmark-ruled"></i>
           <span>Legal Content</span>
+        </NavLink>
+        <NavLink
+          className={`side-link ${isReviewsActive ? "active" : ""}`}
+          to="/reviews"
+          onClick={onClose}
+        >
+          <i className="bi bi-star"></i>
+          <span>Customer Reviews</span>
+          {reviewCount > 0 && <span className="nav-count">{reviewCount}</span>}
         </NavLink>
       </nav>
 
