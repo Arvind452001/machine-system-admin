@@ -269,16 +269,6 @@ const Sidebar = ({ isOpen, onClose }) => {
       </nav>
 
       <div className="sidebar-bottom">
-        <div className="help-card">
-          <span className="help-icon">
-            <i className="bi bi-headset"></i>
-          </span>
-          <strong>Need assistance?</strong>
-          <span>Admin System Support</span>
-          <a href="mailto:admin@machinesystems.com">
-            Contact support <i className="bi bi-arrow-up-right"></i>
-          </a>
-        </div>
         <div className="sidebar-profile-menu-wrap" ref={menuRef} style={{ position: "relative" }}>
           {/* Profile Popup Menu */}
           {profileMenuOpen && (
