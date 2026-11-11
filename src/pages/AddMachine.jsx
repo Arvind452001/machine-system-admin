@@ -84,7 +84,7 @@ const AddMachine = () => {
           status: machine.status || "published",
         });
 
-        const image =
+        const rawImage =
           machine.image ||
           machine.imageUrl ||
           machine.thumbnail ||
@@ -92,9 +92,15 @@ const AddMachine = () => {
           machine.images?.[0] ||
           "";
 
-        setExistingImage(
-          typeof image === "string" ? image : image?.url || ""
-        );
+        const resolvedRaw = typeof rawImage === "string" ? rawImage : rawImage?.url || "";
+        const finalExisting =
+          resolvedRaw === "string" || !resolvedRaw.trim()
+            ? ""
+            : resolvedRaw.startsWith("/")
+            ? `https://node.aitechnotech.in/machine${resolvedRaw}`
+            : resolvedRaw;
+
+        setExistingImage(finalExisting);
       } catch (err) {
         if (active) {
           setFeedback({

@@ -95,13 +95,9 @@ const MachineDetails = () => {
     (machine.status || "").toLowerCase() === "published" ||
     (machine.status || "").toLowerCase() === "active";
 
-  const mainImage =
-    machine.imageUrl ||
-    machine.image ||
-    machine.thumbnail ||
-    (Array.isArray(machine.images) && machine.images.length > 0 ? machine.images[0] : "") ||
+  const FALLBACK_SVG =
     "data:image/svg+xml;charset=utf-8," +
-      encodeURIComponent(`
+    encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
   <rect width="100%" height="100%" fill="#141513" />
   <circle cx="400" cy="225" r="70" fill="none" stroke="#c94f2d" stroke-width="2" stroke-dasharray="6 6"/>
@@ -109,6 +105,27 @@ const MachineDetails = () => {
   <text x="400" y="320" fill="#f5f5f0" font-family="Inter, sans-serif" font-size="14" font-weight="600" text-anchor="middle">MACHINE SYSTEMS</text>
 </svg>
 `);
+
+  const resolveImage = (raw) => {
+    if (!raw || typeof raw !== "string" || raw.trim() === "" || raw === "string") {
+      return FALLBACK_SVG;
+    }
+    if (raw.startsWith("http://") || raw.startsWith("https://") || raw.startsWith("data:")) {
+      return raw;
+    }
+    if (raw.startsWith("/")) {
+      return `https://node.aitechnotech.in/machine${raw}`;
+    }
+    return FALLBACK_SVG;
+  };
+
+  const rawCandidate =
+    machine.imageUrl ||
+    machine.image ||
+    machine.thumbnail ||
+    (Array.isArray(machine.images) && machine.images.length > 0 ? machine.images[0] : "");
+
+  const mainImage = resolveImage(rawCandidate);
 
   const optionsList = Array.isArray(machine.availableOptions) ? machine.availableOptions : [];
 
@@ -137,7 +154,14 @@ const MachineDetails = () => {
 
         <section aria-label="Machine specifications details" className="machine-detail">
           <div className="machine-detail-media">
-            <img alt={machine.name} src={mainImage} />
+            <img
+              alt={machine.name}
+              src={mainImage}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = FALLBACK_SVG;
+              }}
+            />
             <span className={`table-status ${isPublished ? "" : "status-draft"}`}>
               {isPublished ? "Published" : "Draft"}
             </span>
