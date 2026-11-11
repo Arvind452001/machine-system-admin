@@ -268,40 +268,30 @@ const Sidebar = ({ isOpen, onClose }) => {
         </NavLink>
       </nav>
 
-      <div className="sidebar-bottom">
-        <div className="sidebar-profile-menu-wrap" ref={menuRef} style={{ position: "relative" }}>
-          {/* Profile Popup Menu */}
+      <div className="sidebar-bottom" style={{ position: "relative", marginTop: "auto" }}>
+        <div ref={menuRef} style={{ position: "relative" }}>
+          {/* ChatGPT-style Floating User Popup Menu (opens upward above profile) */}
           {profileMenuOpen && (
             <div
-              className="account-dropdown sidebar-account-dropdown"
+              className="chatgpt-profile-popup"
               style={{
                 position: "absolute",
                 bottom: "calc(100% + 10px)",
                 left: 0,
+                right: 0,
                 width: "100%",
                 background: "#ffffff",
-                border: "1px solid #e9e9e5",
-                borderRadius: "8px",
-                padding: "8px",
-                boxShadow: "0 14px 34px rgba(0, 0, 0, 0.35)",
-                zIndex: 100,
-                display: "grid",
+                borderRadius: "14px",
+                border: "1px solid rgba(0, 0, 0, 0.08)",
+                boxShadow: "0 12px 36px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.08)",
+                padding: "6px",
+                zIndex: 9999,
+                display: "flex",
+                flexDirection: "column",
+                animation: "menuPop 0.15s cubic-bezier(0.16, 1, 0.3, 1)",
               }}
             >
-              <strong style={{ padding: "8px 10px 2px", color: "#30312c", fontSize: "12px", fontWeight: "700" }}>
-                {displayName}
-              </strong>
-              <small
-                style={{
-                  padding: "0 10px 8px",
-                  borderBottom: "1px solid #ededeb",
-                  color: "#85867f",
-                  fontSize: "11px",
-                  display: "block",
-                }}
-              >
-                {displayRole}
-              </small>
+              {/* Top User Row (Avatar, Name, Subtitle, Chevron) */}
               <Link
                 to="/profile"
                 onClick={() => {
@@ -311,19 +301,101 @@ const Sidebar = ({ isOpen, onClose }) => {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "9px",
+                  gap: "10px",
                   padding: "9px 10px",
-                  color: "#475569",
-                  fontSize: "12px",
+                  borderRadius: "10px",
                   textDecoration: "none",
-                  borderRadius: "4px",
-                  transition: "background 0.15s, color 0.15s",
+                  transition: "background 0.15s ease",
+                  color: "inherit",
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
-                My profile
+                <span
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "50%",
+                    background: "#2f3e46",
+                    color: "#f5e9d7",
+                    display: "grid",
+                    placeItems: "center",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    flexShrink: 0,
+                  }}
+                >
+                  {initials}
+                </span>
+                <div style={{ minWidth: 0, flex: 1, textAlign: "left" }}>
+                  <div
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      color: "#1e293b",
+                      lineHeight: 1.25,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {displayName}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "11px",
+                      color: "#64748b",
+                      marginTop: "2px",
+                    }}
+                  >
+                    {displayRole}
+                  </div>
+                </div>
+                <i
+                  className="bi bi-chevron-right"
+                  style={{ fontSize: "11px", color: "#94a3b8", marginLeft: "auto" }}
+                ></i>
               </Link>
+
+              {/* Divider */}
+              <div
+                style={{
+                  height: "1px",
+                  background: "#f1f5f9",
+                  margin: "4px 6px",
+                }}
+              ></div>
+
+              {/* Profile Link */}
+              <Link
+                to="/profile"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  if (onClose) onClose();
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "11px",
+                  padding: "9px 12px",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  fontWeight: "500",
+                  color: "#1e293b",
+                  textDecoration: "none",
+                  transition: "background 0.15s ease",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                <i
+                  className="bi bi-person"
+                  style={{ fontSize: "16px", color: "#475569", flexShrink: 0 }}
+                ></i>
+                <span>Profile</span>
+              </Link>
+
+              {/* Settings Link */}
               <Link
                 to="/settings"
                 onClick={() => {
@@ -333,47 +405,67 @@ const Sidebar = ({ isOpen, onClose }) => {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "9px",
-                  padding: "9px 10px",
-                  color: "#475569",
-                  fontSize: "12px",
+                  gap: "11px",
+                  padding: "9px 12px",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  fontWeight: "500",
+                  color: "#1e293b",
                   textDecoration: "none",
-                  borderRadius: "4px",
-                  transition: "background 0.15s, color 0.15s",
+                  transition: "background 0.15s ease",
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
-                Settings
+                <i
+                  className="bi bi-gear"
+                  style={{ fontSize: "16px", color: "#475569", flexShrink: 0 }}
+                ></i>
+                <span>Settings</span>
               </Link>
+
+              {/* Divider */}
+              <div
+                style={{
+                  height: "1px",
+                  background: "#f1f5f9",
+                  margin: "4px 6px",
+                }}
+              ></div>
+
+              {/* Log out Action (like Image 2) */}
               <button
                 type="button"
                 onClick={handleLogout}
                 style={{
-                  display: "block",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "11px",
                   width: "100%",
-                  textAlign: "left",
+                  padding: "9px 12px",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  fontWeight: "500",
+                  color: "#1e293b",
                   background: "none",
                   border: "none",
-                  borderTop: "1px solid #ededeb",
-                  marginTop: "4px",
-                  padding: "9px 10px 4px",
-                  color: "var(--accent, #c94f2d)",
-                  fontSize: "12px",
-                  fontWeight: "600",
                   cursor: "pointer",
-                  borderRadius: "4px",
-                  transition: "background 0.15s",
+                  textAlign: "left",
+                  transition: "background 0.15s ease",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
-                Sign out
+                <i
+                  className="bi bi-box-arrow-right"
+                  style={{ fontSize: "16px", color: "#475569", flexShrink: 0 }}
+                ></i>
+                <span>Log out</span>
               </button>
             </div>
           )}
 
-          {/* Trigger Row */}
+          {/* Trigger Row at bottom of sidebar */}
           <button
             type="button"
             className="profile-link"
@@ -385,12 +477,12 @@ const Sidebar = ({ isOpen, onClose }) => {
               background: profileMenuOpen ? "#222320" : "transparent",
               border: "none",
               borderTop: "1px solid #2b2c29",
-              padding: "13px 8px 6px",
+              padding: "12px 6px",
               display: "flex",
               alignItems: "center",
               gap: "10px",
               cursor: "pointer",
-              borderRadius: "4px",
+              borderRadius: "8px",
               textAlign: "left",
               color: "inherit",
               transition: "background 0.15s ease",
