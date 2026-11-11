@@ -9,3 +9,4 @@ export { default as usersApi } from "./usersApi";
 export { default as renderingsApi } from "./renderingsApi";
 export { default as statsApi } from "./statsApi";
 export { default as notificationsApi } from "./notificationsApi";
+export { default as contentApi } from "./contentApi";

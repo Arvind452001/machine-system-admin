@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
 
@@ -228,6 +229,31 @@ const Settings = () => {
                   <option>Quotes</option>
                 </select>
               </label>
+            </div>
+          </section>
+
+          <section className="settings-panel">
+            <div className="settings-panel-heading">
+              <div>
+                <span className="settings-icon">
+                  <i className="bi bi-file-earmark-ruled"></i>
+                </span>
+                <div>
+                  <h2>Legal &amp; Policy Pages</h2>
+                  <p>Edit public Privacy Policy, Terms &amp; Conditions, and regulatory disclosures.</p>
+                </div>
+              </div>
+            </div>
+            <div style={{ padding: "1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>
+                <strong>Manage Legal Content</strong>
+                <small style={{ display: "block", color: "#6b7280" }}>
+                  Configure customer-facing Privacy Policy and Terms of Service with live preview.
+                </small>
+              </span>
+              <Link to="/legal-content" className="btn btn-outline-dark" style={{ fontSize: "0.85rem", fontWeight: 600 }}>
+                Open Content Editor <i className="bi bi-arrow-right"></i>
+              </Link>
             </div>
           </section>
 

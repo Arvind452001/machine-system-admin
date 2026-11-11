@@ -32,6 +32,7 @@ import InviteRepresentative from "./pages/InviteRepresentative";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import LegalContent from "./pages/LegalContent";
 import NotFound from "./pages/NotFound";
 
 /**
@@ -105,6 +106,8 @@ function App() {
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/legal-content" element={<LegalContent />} />
+            <Route path="/content" element={<LegalContent />} />
 
             {/* Fallback for authenticated users */}
             <Route path="*" element={<NotFound />} />

@@ -91,6 +91,11 @@ const Sidebar = ({ isOpen, onClose }) => {
     "/add-price-rule",
   ].includes(currentPath);
 
+  const isContentActive = [
+    "/legal-content",
+    "/content",
+  ].includes(currentPath);
+
   const isEnquiriesActive = [
     "/enquiries",
     "/enquiry-details",
@@ -173,6 +178,14 @@ const Sidebar = ({ isOpen, onClose }) => {
         >
           <i className="bi bi-tag"></i>
           <span>Pricing</span>
+        </NavLink>
+        <NavLink
+          className={`side-link ${isContentActive ? "active" : ""}`}
+          to="/legal-content"
+          onClick={onClose}
+        >
+          <i className="bi bi-file-earmark-ruled"></i>
+          <span>Legal Content</span>
         </NavLink>
       </nav>
 
