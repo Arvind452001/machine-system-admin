@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { categoryService } from "../services/categoryService";
 import { enquiriesApi } from "../api/enquiriesApi";
@@ -8,13 +8,41 @@ import { reviewsApi } from "../api/reviewsApi";
 
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
   const [categoryCount, setCategoryCount] = useState(() => {
     return categoryService.getCategoriesSync().length;
   });
   const [enquiryCount, setEnquiryCount] = useState(0);
   const [machineCount, setMachineCount] = useState(0);
   const [reviewCount, setReviewCount] = useState(0);
+
+  // Close profile popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Close profile popup on route change
+  useEffect(() => {
+    setProfileMenuOpen(false);
+  }, [location.pathname]);
+
+  const handleLogout = (e) => {
+    e.preventDefault();
+    setProfileMenuOpen(false);
+    if (onClose) onClose();
+    logout();
+    navigate("/login");
+  };
 
   useEffect(() => {
     const updateCount = () => {
@@ -251,14 +279,148 @@ const Sidebar = ({ isOpen, onClose }) => {
             Contact support <i className="bi bi-arrow-up-right"></i>
           </a>
         </div>
-        <Link className="profile-link" to="/profile" onClick={onClose}>
-          <span className="avatar avatar-admin">{initials}</span>
-          <span className="profile-copy">
-            <strong>{displayName}</strong>
-            <small>{displayRole}</small>
-          </span>
-          <i className="bi bi-three-dots"></i>
-        </Link>
+        <div className="sidebar-profile-menu-wrap" ref={menuRef} style={{ position: "relative" }}>
+          {/* Profile Popup Menu */}
+          {profileMenuOpen && (
+            <div
+              className="account-dropdown sidebar-account-dropdown"
+              style={{
+                position: "absolute",
+                bottom: "calc(100% + 10px)",
+                left: 0,
+                width: "100%",
+                background: "#ffffff",
+                border: "1px solid #e9e9e5",
+                borderRadius: "8px",
+                padding: "8px",
+                boxShadow: "0 14px 34px rgba(0, 0, 0, 0.35)",
+                zIndex: 100,
+                display: "grid",
+              }}
+            >
+              <strong style={{ padding: "8px 10px 2px", color: "#30312c", fontSize: "12px", fontWeight: "700" }}>
+                {displayName}
+              </strong>
+              <small
+                style={{
+                  padding: "0 10px 8px",
+                  borderBottom: "1px solid #ededeb",
+                  color: "#85867f",
+                  fontSize: "11px",
+                  display: "block",
+                }}
+              >
+                {displayRole}
+              </small>
+              <Link
+                to="/profile"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  if (onClose) onClose();
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "9px",
+                  padding: "9px 10px",
+                  color: "#475569",
+                  fontSize: "12px",
+                  textDecoration: "none",
+                  borderRadius: "4px",
+                  transition: "background 0.15s, color 0.15s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                My profile
+              </Link>
+              <Link
+                to="/settings"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  if (onClose) onClose();
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "9px",
+                  padding: "9px 10px",
+                  color: "#475569",
+                  fontSize: "12px",
+                  textDecoration: "none",
+                  borderRadius: "4px",
+                  transition: "background 0.15s, color 0.15s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                Settings
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  textAlign: "left",
+                  background: "none",
+                  border: "none",
+                  borderTop: "1px solid #ededeb",
+                  marginTop: "4px",
+                  padding: "9px 10px 4px",
+                  color: "var(--accent, #c94f2d)",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  borderRadius: "4px",
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                Sign out
+              </button>
+            </div>
+          )}
+
+          {/* Trigger Row */}
+          <button
+            type="button"
+            className="profile-link"
+            onClick={() => setProfileMenuOpen((prev) => !prev)}
+            aria-expanded={profileMenuOpen}
+            aria-label="Toggle user account menu"
+            style={{
+              width: "100%",
+              background: profileMenuOpen ? "#222320" : "transparent",
+              border: "none",
+              borderTop: "1px solid #2b2c29",
+              padding: "13px 8px 6px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              cursor: "pointer",
+              borderRadius: "4px",
+              textAlign: "left",
+              color: "inherit",
+              transition: "background 0.15s ease",
+            }}
+          >
+            <span className="avatar avatar-admin">{initials}</span>
+            <span className="profile-copy">
+              <strong>{displayName}</strong>
+              <small>{displayRole}</small>
+            </span>
+            <i
+              className="bi bi-three-dots"
+              style={{
+                marginLeft: "auto",
+                color: profileMenuOpen ? "#ffffff" : "#8c8d86",
+                fontSize: "16px",
+              }}
+            ></i>
+          </button>
+        </div>
       </div>
     </aside>
   );
