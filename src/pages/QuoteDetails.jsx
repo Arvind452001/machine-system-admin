@@ -1,43 +1,26 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
+import EmptyState from "../components/EmptyState";
 import { quotesApi } from "../api/quotesApi";
 import { machinesApi } from "../api/machinesApi";
 
-const FALLBACK_QUOTE = {
-  _id: "6ada08890b6fa3f6be851fd6",
-  quoteNumber: "QUO-2026-1541",
-  customerName: "David Vance",
-  customerCompany: "Apex Precision Engineering Ltd",
-  customerEmail: "customer@machinesystems.com",
-  customerCountry: "United States",
-  representativeName: "Alexander Sterling",
-  machineName: "MS-L4000 Ultra-Speed Fiber Laser Cutter",
-  machineCode: "MS-LC-4000-FIBER",
-  configurationSubtitle: "2 configured options",
-  pricingBreakdown: {
-    basePrice: 228000,
-    optionsTotal: 36500,
-    discountAmount: 2500,
-    finalTotal: 262000,
-  },
-  validUntil: "2026-11-21T12:58:49.836Z",
-  termsAndConditions: "30% advance with order, 70% delivery. 24 mo enterprise warranty.",
-  status: "accepted",
-  options: [
-    { name: "High-Pressure Coolant (70 Bar)", code: "OPT-COOL-70B", priceDelta: 8500 },
-    { name: "Automatic Robotic Arm Workpiece Loading", code: "OPT-AUTO-ROBOT", priceDelta: 28000 },
-  ],
-};
-
 const QuoteDetails = () => {
+  const { id: paramId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const rawId = location.hash.replace("#", "").trim();
+  const searchParams = new URLSearchParams(location.search);
+  const rawId = (
+    paramId ||
+    (location.hash ? location.hash.replace("#", "") : "") ||
+    searchParams.get("id") ||
+    searchParams.get("quoteNumber") ||
+    ""
+  ).trim();
 
-  const [quote, setQuote] = useState(FALLBACK_QUOTE);
-  const [loading, setLoading] = useState(true);
+  const [quote, setQuote] = useState(null);
+  const [loading, setLoading] = useState(Boolean(rawId));
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState({ error: "", success: "" });
@@ -63,6 +46,10 @@ const QuoteDetails = () => {
   });
 
   const loadQuote = (targetId) => {
+    if (!targetId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     quotesApi
       .getQuoteById(targetId)
@@ -78,10 +65,13 @@ const QuoteDetails = () => {
           setFinalPrice(
             q.pricingBreakdown?.finalTotal || q.pricingBreakdown?.total || q.totalAmount || ""
           );
+        } else {
+          setQuote(null);
         }
       })
       .catch((err) => {
-        console.warn("Using offline quote fallback:", err.message);
+        console.warn("Could not load quotation:", err.message);
+        setQuote(null);
       })
       .finally(() => {
         setLoading(false);
@@ -89,8 +79,11 @@ const QuoteDetails = () => {
   };
 
   useEffect(() => {
-    const targetId = rawId || "6ada08890b6fa3f6be851fd6";
-    loadQuote(targetId);
+    if (rawId) {
+      loadQuote(rawId);
+    } else {
+      setLoading(false);
+    }
   }, [rawId]);
 
   const handleUpdateQuote = async () => {
@@ -196,7 +189,7 @@ const QuoteDetails = () => {
     <>
       <Link to="/quotes">Quotes</Link>
       <i className="bi bi-chevron-right"></i>
-      <strong>{quote.quoteNumber || "Quote details"}</strong>
+      <strong>{quote?.quoteNumber || "Quote details"}</strong>
     </>
   );
 
@@ -208,11 +201,45 @@ const QuoteDetails = () => {
     }).format(val || 0);
   };
 
+  if (loading) {
+    return (
+      <AdminLayout breadcrumb={breadcrumb} bodyClass="detail-shell-page">
+        <div className="page-wrap text-center p-5">
+          <div style={{ color: "var(--text-muted, #85867f)", padding: "4rem 0" }}>
+            <i className="bi bi-arrow-repeat me-2" style={{ display: "inline-block", animation: "spin 1s linear infinite", fontSize: "2rem" }}></i>
+            <p className="mt-3">Loading quotation details...</p>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (!quote) {
+    return (
+      <AdminLayout breadcrumb={breadcrumb} bodyClass="detail-shell-page">
+        <div className="page-wrap">
+          <EmptyState
+            icon="bi-file-earmark-x"
+            title="Data is not found"
+            message={
+              rawId
+                ? `The commercial quotation with ID "${rawId}" could not be found or has been removed.`
+                : "No quotation identifier was provided in the request URL."
+            }
+            actionText="Back to all quotations"
+            actionLink="/quotes"
+          />
+        </div>
+      </AdminLayout>
+    );
+  }
+
   const totalAmount =
     quote.pricingBreakdown?.finalTotal ||
+    quote.pricingBreakdown?.totalPrice ||
     quote.pricingBreakdown?.total ||
     quote.totalAmount ||
-    262000;
+    0;
 
   return (
     <AdminLayout breadcrumb={breadcrumb} bodyClass="detail-shell-page">

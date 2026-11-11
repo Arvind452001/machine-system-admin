@@ -8,3 +8,4 @@ export { default as quotesApi } from "./quotesApi";
 export { default as usersApi } from "./usersApi";
 export { default as renderingsApi } from "./renderingsApi";
 export { default as statsApi } from "./statsApi";
+export { default as notificationsApi } from "./notificationsApi";

@@ -4,48 +4,10 @@ import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
 import { enquiriesApi } from "../api/enquiriesApi";
 import Pagination from "../components/Pagination";
-
-const FALLBACK_ENQUIRIES = [
-  {
-    _id: "6adb30b0c536b1269e97cdd7",
-    referenceNumber: "ENQ-2026-5250",
-    fullName: "david miller",
-    company: "Risen technologies",
-    machineName: "MS-M500 5-Axis Machining Center",
-    calculatedTotal: 185000,
-    country: "Canada",
-    status: "assigned",
-    assignedRep: { name: "Alexander Sterling" },
-    createdAt: "2026-10-23T10:02:24.042Z",
-  },
-  {
-    _id: "6adb1f5138d252d62f0d772e",
-    referenceNumber: "ENQ-2026-6080",
-    fullName: "Morgan Chen",
-    company: "Chen Precision Machining",
-    machineName: "Axis 400 · Precision CNC lathe",
-    calculatedTotal: 50900,
-    country: "United States",
-    status: "new",
-    assignedRep: null,
-    createdAt: "2026-10-23T08:48:17.000Z",
-  },
-  {
-    _id: "6adb036ed1c14c960efb9ccf",
-    referenceNumber: "ENQ-2026-1340",
-    fullName: "David Vance",
-    company: "Apex Precision Engineering Ltd",
-    machineName: "MS-L4000 Ultra-Speed Fiber Laser Cutter",
-    calculatedTotal: 256500,
-    country: "United States",
-    status: "quote_ready",
-    assignedRep: { name: "Alexander Sterling" },
-    createdAt: "2026-10-23T06:49:18.978Z",
-  },
-];
+import StatSpinner from "../components/StatSpinner";
 
 const Enquiries = () => {
-  const [enquiries, setEnquiries] = useState(FALLBACK_ENQUIRIES);
+  const [enquiries, setEnquiries] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All statuses");
   const [loading, setLoading] = useState(true);
@@ -59,12 +21,11 @@ const Enquiries = () => {
       .then((res) => {
         if (!mounted) return;
         const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        if (list.length > 0) {
-          setEnquiries(list);
-        }
+        setEnquiries(list);
       })
       .catch((err) => {
-        console.warn("Using offline fallback in Admin Enquiries:", err.message);
+        console.warn("Could not load enquiries from API:", err.message);
+        setEnquiries([]);
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -146,20 +107,32 @@ const Enquiries = () => {
         <section className="summary-strip">
           <div className="summary-item">
             <span>Total enquiries</span>
-            <strong>{enquiries.length}</strong>
-            <small>Captured in database</small>
+            <strong>{loading ? <StatSpinner /> : enquiries.length}</strong>
+            <small>{loading ? "Loading..." : "Captured in database"}</small>
           </div>
           <div className="summary-item">
             <span>Awaiting assignment</span>
             <strong>
-              {enquiries.filter((e) => !e.assignedRep && (e.status || "").includes("new")).length}
+              {loading ? (
+                <StatSpinner />
+              ) : (
+                enquiries.filter((e) => !e.assignedRep && (e.status || "").includes("new")).length
+              )}
             </strong>
+            <small>{loading ? "Loading..." : "Unassigned new requests"}</small>
           </div>
           <div className="summary-item">
             <span>In discussion / Quotes</span>
             <strong>
-              {enquiries.filter((e) => (e.status || "").includes("quote") || (e.status || "").includes("review")).length}
+              {loading ? (
+                <StatSpinner />
+              ) : (
+                enquiries.filter(
+                  (e) => (e.status || "").includes("quote") || (e.status || "").includes("review")
+                ).length
+              )}
             </strong>
+            <small>{loading ? "Loading..." : "Active in pipeline"}</small>
           </div>
         </section>
 
@@ -208,53 +181,78 @@ const Enquiries = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredEnquiries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((enq) => {
-                  const custName =
-                    enq.fullName ||
-                    enq.customer?.name ||
-                    `${enq.firstName || ""} ${enq.lastName || ""}`.trim() ||
-                    "Customer";
-                  const custCompany = enq.company || enq.customer?.company || "Direct";
-                  const custCountry = enq.country || enq.customer?.country || "Global";
-                  const machName = enq.machineName || enq.machine?.name || "Machine Platform";
-                  const refNum = enq.referenceNumber || enq.enquiryNumber || enq._id;
-                  const repName = enq.assignedRep?.name || "Unassigned";
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "center", padding: "36px 16px", color: "var(--text-muted, #85867f)" }}>
+                      <i className="bi bi-arrow-repeat me-2" style={{ display: "inline-block", animation: "spin 1s linear infinite" }}></i>
+                      Loading customer enquiries...
+                    </td>
+                  </tr>
+                ) : filteredEnquiries.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "center", padding: "48px 16px" }}>
+                      <div style={{ maxWidth: "360px", margin: "0 auto", textAlign: "center" }}>
+                        <i className="bi bi-inbox" style={{ fontSize: "32px", color: "#c5c6bf", display: "block", marginBottom: "12px" }}></i>
+                        <strong style={{ display: "block", marginBottom: "6px", fontSize: "15px" }}>
+                          Data is not found
+                        </strong>
+                        <p style={{ color: "#85867f", fontSize: "12px", marginBottom: "0" }}>
+                          {searchTerm || statusFilter !== "All statuses"
+                            ? "No customer enquiries match the selected filter criteria."
+                            : "No customer enquiries currently recorded in the system."}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredEnquiries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((enq) => {
+                    const custName =
+                      enq.fullName ||
+                      enq.customer?.name ||
+                      `${enq.firstName || ""} ${enq.lastName || ""}`.trim() ||
+                      "Customer";
+                    const custCompany = enq.company || enq.customer?.company || "Direct";
+                    const custCountry = enq.country || enq.customer?.country || "Global";
+                    const machName = enq.machineName || enq.machine?.name || "Machine Platform";
+                    const refNum = enq.referenceNumber || enq.enquiryNumber || enq._id;
+                    const repName = enq.assignedRep?.name || "Unassigned";
 
-                  return (
-                    <tr key={enq._id || refNum}>
-                      <td>
-                        <strong>{custName}</strong>
-                        <span className="cell-sub">
-                          {refNum} · {custCompany} ({custCountry})
-                        </span>
-                      </td>
-                      <td>
-                        <strong>{machName}</strong>
-                        <span className="cell-sub">
-                          {Array.isArray(enq.selectedOptions) ? `${enq.selectedOptions.length} selected options` : "Configured system"}
-                        </span>
-                      </td>
-                      <td>
-                        <strong>{formatPrice(enq.calculatedTotal || enq.targetBudget || 0)}</strong>
-                      </td>
-                      <td>
-                        <span style={{ color: enq.assignedRep ? "inherit" : "var(--accent)" }}>
-                          {repName}
-                        </span>
-                      </td>
-                      <td>{getStatusBadge(enq.status)}</td>
-                      <td>
-                        <Link
-                          aria-label={`View enquiry details for ${custName}`}
-                          className="table-action"
-                          to={`/enquiry-details#${enq._id || refNum}`}
-                        >
-                          <i className="bi bi-arrow-up-right"></i>
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
+                    return (
+                      <tr key={enq._id || refNum}>
+                        <td>
+                          <strong>{custName}</strong>
+                          <span className="cell-sub">
+                            {refNum} · {custCompany} ({custCountry})
+                          </span>
+                        </td>
+                        <td>
+                          <strong>{machName}</strong>
+                          <span className="cell-sub">
+                            {Array.isArray(enq.selectedOptions) ? `${enq.selectedOptions.length} selected options` : "Configured system"}
+                          </span>
+                        </td>
+                        <td>
+                          <strong>{formatPrice(enq.calculatedTotal || enq.targetBudget || 0)}</strong>
+                        </td>
+                        <td>
+                          <span style={{ color: enq.assignedRep ? "inherit" : "var(--accent)" }}>
+                            {repName}
+                          </span>
+                        </td>
+                        <td>{getStatusBadge(enq.status)}</td>
+                        <td>
+                          <Link
+                            aria-label={`View enquiry details for ${custName}`}
+                            className="table-action"
+                            to={`/enquiry-details#${enq._id || refNum}`}
+                          >
+                            <i className="bi bi-arrow-up-right"></i>
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>

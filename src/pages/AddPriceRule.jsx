@@ -1,19 +1,42 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
+import { machinesApi } from "../api/machinesApi";
+import { optionsApi } from "../api/optionsApi";
 
 const AddPriceRule = () => {
   const navigate = useNavigate();
+  const [machines, setMachines] = useState([]);
+  const [options, setOptions] = useState([]);
   const [formData, setFormData] = useState({
     machine: "",
-    type: "",
+    type: "Base price",
     option: "",
     amount: "",
     currency: "USD - US Dollar",
-    effectiveDate: "",
-    status: "Draft",
+    effectiveDate: new Date().toISOString().slice(0, 10),
+    status: "Active",
   });
+
+  useEffect(() => {
+    let mounted = true;
+    machinesApi.getMachines().then((res) => {
+      if (!mounted) return;
+      const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      setMachines(list);
+    });
+
+    optionsApi.getOptions().then((res) => {
+      if (!mounted) return;
+      const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      setOptions(list);
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -43,8 +66,7 @@ const AddPriceRule = () => {
             </div>
             <h1>Add price rule</h1>
             <p className="welcome-subtitle">
-              Set a machine base price or an adjustment for a configurable
-              option.
+              Set a machine base price or an adjustment for a configurable option.
             </p>
           </div>
         </section>
@@ -68,10 +90,11 @@ const AddPriceRule = () => {
                   onChange={handleChange}
                 >
                   <option value="">Select machine</option>
-                  <option>FX-420 Press</option>
-                  <option>CR-80 Cutter</option>
-                  <option>MX-220 Mixer</option>
-                  <option>PL-600 Loader</option>
+                  {machines.map((m) => (
+                    <option key={m._id || m.id || m.slug} value={m.name}>
+                      {m.name} ({m.sku || m.slug})
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="form-field">
@@ -82,25 +105,28 @@ const AddPriceRule = () => {
                   value={formData.type}
                   onChange={handleChange}
                 >
-                  <option value="">Select price type</option>
-                  <option>Base price</option>
-                  <option>Option adjustment</option>
+                  <option value="Base price">Base price</option>
+                  <option value="Option adjustment">Option adjustment</option>
                 </select>
               </label>
-              <label className="form-field field-wide">
-                <span>Option</span>
-                <select
-                  name="option"
-                  value={formData.option}
-                  onChange={handleChange}
-                >
-                  <option value="">Select option (for option adjustment)</option>
-                  <option>Automatic tool changer</option>
-                  <option>Safety enclosure</option>
-                  <option>Dust extraction unit</option>
-                  <option>Extended warranty</option>
-                </select>
-              </label>
+              {formData.type === "Option adjustment" && (
+                <label className="form-field field-wide">
+                  <span>Option *</span>
+                  <select
+                    name="option"
+                    required
+                    value={formData.option}
+                    onChange={handleChange}
+                  >
+                    <option value="">Select configurable option</option>
+                    {options.map((opt) => (
+                      <option key={opt._id || opt.code || opt.id} value={opt.name}>
+                        {opt.name} ({opt.code})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label className="form-field">
                 <span>Amount *</span>
                 <div className="input-prefix">
@@ -145,8 +171,8 @@ const AddPriceRule = () => {
                   value={formData.status}
                   onChange={handleChange}
                 >
-                  <option>Draft</option>
                   <option>Active</option>
+                  <option>Draft</option>
                 </select>
               </label>
             </div>

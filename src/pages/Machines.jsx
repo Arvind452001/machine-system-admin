@@ -4,45 +4,10 @@ import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
 import { machinesApi } from "../api/machinesApi";
 import Pagination from "../components/Pagination";
-
-const FALLBACK_MACHINES = [
-  {
-    _id: "6ad9fc28e39daefd54e568ff",
-    name: "MS-L4000 Ultra-Speed Fiber Laser Cutter",
-    slug: "ms-l4000",
-    sku: "MS-LC-4000-FIBER",
-    category: "Laser processing",
-    basePrice: 228000,
-    availableOptions: new Array(6),
-    status: "published",
-    icon: "bi-cpu",
-  },
-  {
-    _id: "6ad9fc27e39daefd54e568fc",
-    name: "MS-M500 5-Axis Machining Center",
-    slug: "ms-m500",
-    sku: "MS-MC-500-5X",
-    category: "Turning & Milling",
-    basePrice: 185000,
-    availableOptions: new Array(5),
-    status: "published",
-    icon: "bi-gear-wide-connected",
-  },
-  {
-    _id: "6ad9fc27e39daefd54e568f9",
-    name: "MS-V850 Precision Vertical Machining Center",
-    slug: "ms-v850",
-    sku: "MS-VMC-850",
-    category: "Turning & Milling",
-    basePrice: 142000,
-    availableOptions: new Array(4),
-    status: "published",
-    icon: "bi-arrow-repeat",
-  },
-];
+import StatSpinner from "../components/StatSpinner";
 
 const Machines = () => {
-  const [machines, setMachines] = useState(FALLBACK_MACHINES);
+  const [machines, setMachines] = useState([]);
   const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All statuses");
@@ -60,12 +25,11 @@ const Machines = () => {
       .then((res) => {
         if (!mounted) return;
         const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        if (list.length > 0) {
-          setMachines(list);
-        }
+        setMachines(list);
       })
       .catch((err) => {
-        console.warn("Using offline machines fallback in Admin:", err.message);
+        console.warn("Could not load machines from API:", err.message);
+        setMachines([]);
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -159,16 +123,18 @@ const Machines = () => {
         <section className="summary-strip">
           <div className="summary-item">
             <span>Published machines</span>
-            <strong>{publishedCount}</strong>
-            <small>Active in catalog</small>
+            <strong>{loading ? <StatSpinner /> : publishedCount}</strong>
+            <small>{loading ? "Loading..." : "Active in catalog"}</small>
           </div>
           <div className="summary-item">
             <span>Drafts</span>
-            <strong>{draftCount}</strong>
+            <strong>{loading ? <StatSpinner /> : draftCount}</strong>
+            <small>{loading ? "Loading..." : "Unlisted / In development"}</small>
           </div>
           <div className="summary-item">
             <span>Options across catalog</span>
-            <strong>{totalOptionsCount || 15}</strong>
+            <strong>{loading ? <StatSpinner /> : totalOptionsCount}</strong>
+            <small>{loading ? "Loading..." : "Compatible machine add-ons"}</small>
           </div>
         </section>
 
@@ -231,50 +197,78 @@ const Machines = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredMachines.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((machine) => {
-                  const mId = machine._id || machine.id || machine.slug;
-                  const isPublished =
-                    (machine.status || "").toLowerCase() === "published" ||
-                    (machine.status || "").toLowerCase() === "active";
-                  const optionsLen = Array.isArray(machine.availableOptions)
-                    ? machine.availableOptions.length
-                    : 0;
-
-                  return (
-                    <tr key={mId}>
-                      <td>
-                        <div className="table-product">
-                          <span className="product-thumb">
-                            <i className="bi bi-gear-wide-connected"></i>
-                          </span>
-                          <span>
-                            <strong>{machine.name}</strong>
-                            <span className="cell-sub">{machine.sku || machine.slug}</span>
-                          </span>
-                        </div>
-                      </td>
-                      <td>{machine.category || "General"}</td>
-                      <td>
-                        <strong>{formatPrice(machine.basePrice)}</strong>
-                      </td>
-                      <td>{optionsLen} options</td>
-                      <td>
-                        <span className={`table-status ${isPublished ? "" : "status-draft"}`}>
-                          {isPublished ? "Published" : "Draft"}
-                        </span>
-                      </td>
-                      <td>
-                        <Link
-                          aria-label={`Manage ${machine.name}`}
-                          className="table-action"
-                          to={`/machine-details?id=${mId}`}
-                        >
-                          <i className="bi bi-arrow-up-right"></i>
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "center", padding: "36px 16px", color: "var(--text-muted, #85867f)" }}>
+                      <i className="bi bi-arrow-repeat me-2" style={{ display: "inline-block", animation: "spin 1s linear infinite" }}></i>
+                      Loading machines...
+                    </td>
+                  </tr>
+                ) : filteredMachines.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "center", padding: "48px 16px" }}>
+                      <div style={{ maxWidth: "360px", margin: "0 auto", textAlign: "center" }}>
+                        <i className="bi bi-cpu" style={{ fontSize: "32px", color: "#c5c6bf", display: "block", marginBottom: "12px" }}></i>
+                        <strong style={{ display: "block", marginBottom: "6px", fontSize: "15px" }}>
+                          Data is not found
+                        </strong>
+                        <p style={{ color: "#85867f", fontSize: "12px", marginBottom: "16px" }}>
+                          {searchTerm || categoryFilter !== "All categories" || statusFilter !== "All statuses"
+                            ? "No machines match the selected filter criteria."
+                            : "No industrial machines currently configured in the database."}
+                        </p>
+                        <Link to="/add-machine" className="btn btn-accent btn-sm">
+                          <i className="bi bi-plus-lg me-1"></i> Add new machine
                         </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredMachines.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((machine) => {
+                    const mId = machine._id || machine.id || machine.slug;
+                    const isPublished =
+                      (machine.status || "").toLowerCase() === "published" ||
+                      (machine.status || "").toLowerCase() === "active";
+                    const optionsLen = Array.isArray(machine.availableOptions)
+                      ? machine.availableOptions.length
+                      : 0;
+
+                    return (
+                      <tr key={mId}>
+                        <td>
+                          <div className="table-product">
+                            <span className="product-thumb">
+                              <i className="bi bi-gear-wide-connected"></i>
+                            </span>
+                            <span>
+                              <strong>{machine.name}</strong>
+                              <span className="cell-sub">{machine.sku || machine.slug}</span>
+                            </span>
+                          </div>
+                        </td>
+                        <td>{machine.category || "General"}</td>
+                        <td>
+                          <strong>{formatPrice(machine.basePrice)}</strong>
+                        </td>
+                        <td>{optionsLen} options</td>
+                        <td>
+                          <span className={`table-status ${isPublished ? "" : "status-draft"}`}>
+                            {isPublished ? "Published" : "Draft"}
+                          </span>
+                        </td>
+                        <td>
+                          <Link
+                            aria-label={`Manage ${machine.name}`}
+                            className="table-action"
+                            to={`/machine-details?id=${mId}`}
+                          >
+                            <i className="bi bi-arrow-up-right"></i>
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>

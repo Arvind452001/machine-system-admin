@@ -8,11 +8,11 @@ import { authApi } from "../api/authApi";
 const Profile = () => {
   const { user, updateProfile } = useAuth();
   const [profileData, setProfileData] = useState({
-    name: user?.name || "System Administrator",
-    company: user?.company || "MACHINE Systems Headquarters",
-    email: user?.email || "admin@machinesystems.com",
-    phone: user?.phone || "+1 (555) 019-2831",
-    country: user?.country || user?.territory || "United States",
+    name: user?.name || "",
+    company: user?.company || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    country: user?.country || user?.territory || "",
     role: user?.role || "admin",
   });
 
@@ -27,11 +27,11 @@ const Profile = () => {
         const u = res?.user || res?.data?.user || res?.data;
         if (u) {
           setProfileData({
-            name: u.name || `${u.firstName || ""} ${u.lastName || ""}`.trim() || "Administrator",
-            company: u.company || "MACHINE Systems Headquarters",
+            name: u.name || `${u.firstName || ""} ${u.lastName || ""}`.trim() || "",
+            company: u.company || "",
             email: u.email || "",
             phone: u.phone || "",
-            country: u.country || u.territory || "United States",
+            country: u.country || u.territory || "",
             role: u.role || "admin",
           });
         }
@@ -61,7 +61,7 @@ const Profile = () => {
       });
 
       if (res?.success) {
-        setFeedback({ success: "Admin profile updated successfully (PUT /auth/update-profile)!", error: "" });
+        setFeedback({ success: "Admin profile updated successfully!", error: "" });
       } else {
         setFeedback({ error: res?.message || "Failed to update profile.", success: "" });
       }
@@ -80,12 +80,14 @@ const Profile = () => {
     </>
   );
 
-  const initials = (profileData.name || "Admin")
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  const initials =
+    (profileData.name || user?.name || "Admin")
+      .split(" ")
+      .filter(Boolean)
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "AD";
 
   return (
     <AdminLayout breadcrumb={breadcrumb} bodyClass="form-page">
@@ -119,7 +121,7 @@ const Profile = () => {
         <div className="profile-layout">
           <section className="profile-overview">
             <div className="profile-avatar-large">{initials}</div>
-            <h2>{profileData.name}</h2>
+            <h2>{profileData.name || "Administrator"}</h2>
             <p style={{ textTransform: "capitalize" }}>{profileData.role}</p>
             <span className="profile-status">
               <i className="bi bi-circle-fill"></i> Active backend session
@@ -148,6 +150,7 @@ const Profile = () => {
                   <input
                     name="name"
                     required
+                    placeholder="Enter full name"
                     value={profileData.name}
                     onChange={handleChange}
                   />
@@ -156,6 +159,7 @@ const Profile = () => {
                   <span>Company name</span>
                   <input
                     name="company"
+                    placeholder="e.g. Acme Industrial"
                     value={profileData.company}
                     onChange={handleChange}
                   />
@@ -186,7 +190,7 @@ const Profile = () => {
                   <span>Country / Territory</span>
                   <input
                     name="country"
-                    placeholder="United States"
+                    placeholder="e.g. United States"
                     value={profileData.country}
                     onChange={handleChange}
                   />

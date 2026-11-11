@@ -11,11 +11,7 @@ const Pagination = ({
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
   if (totalItems === 0) {
-    return (
-      <footer className={`table-footer ${className}`}>
-        <span>No ${itemName} found</span>
-      </footer>
-    );
+    return null;
   }
 
   const startIdx = (currentPage - 1) * pageSize + 1;

@@ -1,60 +1,107 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
 import Pagination from "../components/Pagination";
-
-const initialRules = [
-  {
-    id: "rule-1",
-    name: "FX-420 Press · Base price",
-    sub: "Primary machine price",
-    machine: "FX-420 Press",
-    type: "Base price",
-    amount: "$84,500",
-    updated: "Oct 12, 2026",
-    status: "Active",
-  },
-  {
-    id: "rule-2",
-    name: "Automatic tool changer",
-    sub: "Optional equipment",
-    machine: "FX-420 Press",
-    type: "Option adjustment",
-    displayType: "Option",
-    amount: "+$8,400",
-    updated: "Oct 12, 2026",
-    status: "Active",
-  },
-  {
-    id: "rule-3",
-    name: "CR-80 Cutter · Base price",
-    sub: "Primary machine price",
-    machine: "CR-80 Cutter",
-    type: "Base price",
-    amount: "$62,900",
-    updated: "Oct 10, 2026",
-    status: "Active",
-  },
-  {
-    id: "rule-4",
-    name: "Dust extraction unit",
-    sub: "Optional equipment",
-    machine: "CR-80 Cutter",
-    type: "Option adjustment",
-    displayType: "Option",
-    amount: "+$2,750",
-    updated: "Oct 09, 2026",
-    status: "Active",
-  },
-];
+import { machinesApi } from "../api/machinesApi";
+import { optionsApi } from "../api/optionsApi";
 
 const Pricing = () => {
+  const [rules, setRules] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [machineNames, setMachineNames] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [machineFilter, setMachineFilter] = useState("All machines");
   const [typeFilter, setTypeFilter] = useState("All price types");
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 5;
+  const PAGE_SIZE = 6;
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+
+    Promise.allSettled([machinesApi.getMachines(), optionsApi.getOptions()])
+      .then(([machinesRes, optionsRes]) => {
+        if (!mounted) return;
+
+        const machinesList =
+          machinesRes.status === "fulfilled"
+            ? Array.isArray(machinesRes.value?.data)
+              ? machinesRes.value.data
+              : Array.isArray(machinesRes.value)
+              ? machinesRes.value
+              : []
+            : [];
+
+        const optionsList =
+          optionsRes.status === "fulfilled"
+            ? Array.isArray(optionsRes.value?.data)
+              ? optionsRes.value.data
+              : Array.isArray(optionsRes.value)
+              ? optionsRes.value
+              : []
+            : [];
+
+        const names = [...new Set(machinesList.map((m) => m.name).filter(Boolean))];
+        setMachineNames(names);
+
+        const formatCurrency = (val) =>
+          new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "USD",
+            maximumFractionDigits: 0,
+          }).format(val || 0);
+
+        // Machine base price rules
+        const machineRules = machinesList.map((m) => ({
+          id: `mach-${m._id || m.slug}`,
+          name: `${m.name} · Base Price`,
+          sub: `SKU: ${m.sku || m.slug || "Standard"} · Category: ${m.category || "General"}`,
+          machine: m.name,
+          type: "Base price",
+          displayType: "Base price",
+          amount: formatCurrency(m.basePrice),
+          updated: m.updatedAt ? new Date(m.updatedAt).toLocaleDateString() : "Active",
+          status:
+            (m.status || "").toLowerCase() === "published" || (m.status || "").toLowerCase() === "active"
+              ? "Active"
+              : "Draft",
+        }));
+
+        // Option adjustment rules
+        const optionRules = optionsList.map((o) => {
+          const associatedMachine =
+            machinesList.find((m) => m._id === o.machine || m.id === o.machine)?.name ||
+            o.machine?.name ||
+            "All compatible machines";
+
+          return {
+            id: `opt-${o._id || o.code}`,
+            name: `${o.name} · Option Adjustment`,
+            sub: `Code: ${o.code || "OPT"} · Category: ${(o.category || "General").toUpperCase()}`,
+            machine: associatedMachine,
+            type: "Option adjustment",
+            displayType: "Option",
+            amount: `+${formatCurrency(o.priceDelta || o.price || 0)}`,
+            updated: o.updatedAt ? new Date(o.updatedAt).toLocaleDateString() : "Active",
+            status: o.isActive !== false ? "Active" : "Draft",
+          };
+        });
+
+        setRules([...machineRules, ...optionRules]);
+      })
+      .catch((err) => {
+        console.warn("Could not load pricing rules:", err.message);
+        setRules([]);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const breadcrumb = (
     <>
@@ -64,7 +111,7 @@ const Pricing = () => {
     </>
   );
 
-  const filteredRules = initialRules.filter((rule) => {
+  const filteredRules = rules.filter((rule) => {
     const matchesSearch =
       rule.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rule.sub.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -89,31 +136,13 @@ const Pricing = () => {
             </div>
             <h1>Pricing</h1>
             <p className="welcome-subtitle">
-              Set indicative machine prices and option adjustments shown in the
-              configurator.
+              Live indicative machine base prices and modular option adjustments.
             </p>
           </div>
           <div className="header-actions">
             <Link className="btn btn-accent" to="/add-price-rule">
               <i className="bi bi-plus-lg"></i> Add price rule
             </Link>
-          </div>
-        </section>
-
-        <section className="summary-strip">
-          <div className="summary-item">
-            <span>Base prices</span>
-            <strong>12</strong>
-            <small>All machines covered</small>
-          </div>
-          <div className="summary-item">
-            <span>Option adjustments</span>
-            <strong>84</strong>
-          </div>
-          <div className="summary-item">
-            <span>Last price update</span>
-            <strong>Oct 12</strong>
-            <small>By Jordan Miller</small>
           </div>
         </section>
 
@@ -126,7 +155,10 @@ const Pricing = () => {
                 placeholder="Search machine or option"
                 type="search"
                 value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
               />
             </label>
           </div>
@@ -135,17 +167,26 @@ const Pricing = () => {
               aria-label="Filter pricing by machine"
               className="filter-control"
               value={machineFilter}
-              onChange={(e) => setMachineFilter(e.target.value)}
+              onChange={(e) => {
+                setMachineFilter(e.target.value);
+                setCurrentPage(1);
+              }}
             >
               <option>All machines</option>
-              <option>FX-420 Press</option>
-              <option>CR-80 Cutter</option>
+              {machineNames.map((name, i) => (
+                <option key={i} value={name}>
+                  {name}
+                </option>
+              ))}
             </select>
             <select
               aria-label="Filter price type"
               className="filter-control"
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
+              onChange={(e) => {
+                setTypeFilter(e.target.value);
+                setCurrentPage(1);
+              }}
             >
               <option>All price types</option>
               <option>Base price</option>
@@ -168,27 +209,62 @@ const Pricing = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredRules.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((rule) => (
-                  <tr key={rule.id}>
-                    <td>
-                      <strong>{rule.name}</strong>
-                      <span className="cell-sub">{rule.sub}</span>
-                    </td>
-                    <td>{rule.machine}</td>
-                    <td>{rule.displayType || rule.type}</td>
-                    <td>
-                      <strong>{rule.amount}</strong>
-                    </td>
-                    <td>{rule.updated}</td>
-                    <td>
-                      <span className="table-status">{rule.status}</span>
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "center", padding: "36px 16px", color: "var(--text-muted, #85867f)" }}>
+                      <i className="bi bi-arrow-repeat me-2" style={{ display: "inline-block", animation: "spin 1s linear infinite" }}></i>
+                      Loading pricing rules...
                     </td>
                   </tr>
-                ))}
+                ) : filteredRules.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "center", padding: "48px 16px" }}>
+                      <div style={{ maxWidth: "360px", margin: "0 auto", textAlign: "center" }}>
+                        <i className="bi bi-tag" style={{ fontSize: "32px", color: "#c5c6bf", display: "block", marginBottom: "12px" }}></i>
+                        <strong style={{ display: "block", marginBottom: "6px", fontSize: "15px" }}>
+                          Data is not found
+                        </strong>
+                        <p style={{ color: "#85867f", fontSize: "12px", marginBottom: "16px" }}>
+                          {searchTerm || machineFilter !== "All machines" || typeFilter !== "All price types"
+                            ? "No pricing rules match the selected filter criteria."
+                            : "No machine rates or option pricing adjustments currently recorded."}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRules
+                    .slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+                    .map((rule) => (
+                      <tr key={rule.id}>
+                        <td>
+                          <strong>{rule.name}</strong>
+                          <span className="cell-sub">{rule.sub}</span>
+                        </td>
+                        <td>{rule.machine}</td>
+                        <td>{rule.displayType || rule.type}</td>
+                        <td>
+                          <strong>{rule.amount}</strong>
+                        </td>
+                        <td>{rule.updated}</td>
+                        <td>
+                          <span className={`table-status ${rule.status === "Active" ? "" : "status-draft"}`}>
+                            {rule.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                )}
               </tbody>
             </table>
           </div>
-          <Pagination currentPage={currentPage} totalItems={filteredRules.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} itemName="price rules" />
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredRules.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setCurrentPage}
+            itemName="price rules"
+          />
         </section>
 
         <Footer />

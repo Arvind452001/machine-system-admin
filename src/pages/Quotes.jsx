@@ -4,36 +4,10 @@ import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
 import { quotesApi } from "../api/quotesApi";
 import Pagination from "../components/Pagination";
-
-const FALLBACK_QUOTES = [
-  {
-    _id: "6ada08890b6fa3f6be851fd6",
-    quoteNumber: "QUO-2026-1541",
-    customerName: "David Vance",
-    customerCompany: "Apex Precision Engineering Ltd",
-    customerCountry: "United States",
-    representativeName: "Alexander Sterling",
-    machineName: "MS-L4000 Ultra-Speed Fiber Laser Cutter",
-    pricingBreakdown: { finalTotal: 262000 },
-    validUntil: "2026-11-21T12:58:49.836Z",
-    status: "accepted",
-  },
-  {
-    _id: "6ad9fc29e39daefd54e56907",
-    quoteNumber: "QUO-2026-1001",
-    customerName: "David Vance",
-    customerCompany: "Apex Precision Engineering Ltd",
-    customerCountry: "United States",
-    representativeName: "Alexander Sterling",
-    machineName: "MS-M500 5-Axis Machining Center",
-    pricingBreakdown: { finalTotal: 195000 },
-    validUntil: "2026-11-21T12:06:01.363Z",
-    status: "sent",
-  },
-];
+import StatSpinner from "../components/StatSpinner";
 
 const Quotes = () => {
-  const [quotes, setQuotes] = useState(FALLBACK_QUOTES);
+  const [quotes, setQuotes] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All statuses");
   const [loading, setLoading] = useState(true);
@@ -48,12 +22,11 @@ const Quotes = () => {
       .getQuotes()
       .then((res) => {
         const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        if (list.length > 0) {
-          setQuotes(list);
-        }
+        setQuotes(list);
       })
       .catch((err) => {
-        console.warn("Using offline fallback in Quotes:", err.message);
+        console.warn("Could not load quotes from API:", err.message);
+        setQuotes([]);
       })
       .finally(() => {
         setLoading(false);
@@ -194,20 +167,34 @@ const Quotes = () => {
         <section className="summary-strip">
           <div className="summary-item">
             <span>Total quotations</span>
-            <strong>{quotes.length}</strong>
-            <small>Active in database</small>
+            <strong>{loading ? <StatSpinner /> : quotes.length}</strong>
+            <small>{loading ? "Loading..." : "Active in database"}</small>
           </div>
           <div className="summary-item">
             <span>Accepted / Won</span>
             <strong>
-              {quotes.filter((q) => (q.status || "").toLowerCase().includes("accept")).length}
+              {loading ? (
+                <StatSpinner />
+              ) : (
+                quotes.filter((q) => (q.status || "").toLowerCase().includes("accept")).length
+              )}
             </strong>
+            <small>{loading ? "Loading..." : "Signed proposals"}</small>
           </div>
           <div className="summary-item">
             <span>In negotiation</span>
             <strong>
-              {quotes.filter((q) => (q.status || "").toLowerCase().includes("sent") || (q.status || "").toLowerCase().includes("prep")).length}
+              {loading ? (
+                <StatSpinner />
+              ) : (
+                quotes.filter(
+                  (q) =>
+                    (q.status || "").toLowerCase().includes("sent") ||
+                    (q.status || "").toLowerCase().includes("prep")
+                ).length
+              )}
             </strong>
+            <small>{loading ? "Loading..." : "Awaiting customer approval"}</small>
           </div>
         </section>
 
@@ -253,69 +240,94 @@ const Quotes = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredQuotes.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((q) => {
-                  const qNum = q.quoteNumber || "Quote";
-                  const mach = q.machineName || q.machine?.name || "Machinery System";
-                  const cust = q.customerName || q.customer?.name || "Valued Customer";
-                  const comp = q.customerCompany || q.customer?.company || "Direct account";
-                  const total =
-                    q.pricingBreakdown?.finalTotal ||
-                    q.pricingBreakdown?.total ||
-                    q.totalAmount ||
-                    q.value ||
-                    0;
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "center", padding: "36px 16px", color: "var(--text-muted, #85867f)" }}>
+                      <i className="bi bi-arrow-repeat me-2" style={{ display: "inline-block", animation: "spin 1s linear infinite" }}></i>
+                      Loading quotations...
+                    </td>
+                  </tr>
+                ) : filteredQuotes.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "center", padding: "48px 16px" }}>
+                      <div style={{ maxWidth: "360px", margin: "0 auto", textAlign: "center" }}>
+                        <i className="bi bi-file-earmark-text" style={{ fontSize: "32px", color: "#c5c6bf", display: "block", marginBottom: "12px" }}></i>
+                        <strong style={{ display: "block", marginBottom: "6px", fontSize: "15px" }}>
+                          Data is not found
+                        </strong>
+                        <p style={{ color: "#85867f", fontSize: "12px", marginBottom: "0" }}>
+                          {searchTerm || statusFilter !== "All statuses"
+                            ? "No commercial quotations match the selected filters."
+                            : "No commercial quotations currently recorded in the system."}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredQuotes.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((q) => {
+                    const qNum = q.quoteNumber || "Quote";
+                    const mach = q.machineName || q.machine?.name || "Machinery System";
+                    const cust = q.customerName || q.customer?.name || "Valued Customer";
+                    const comp = q.customerCompany || q.customer?.company || "Direct account";
+                    const total =
+                      q.pricingBreakdown?.finalTotal ||
+                      q.pricingBreakdown?.total ||
+                      q.totalAmount ||
+                      q.value ||
+                      0;
 
-                  return (
-                    <tr key={q._id || qNum}>
-                      <td>
-                        <strong>{qNum}</strong>
-                        <span className="cell-sub">
-                          {q.validUntil ? `Valid to ${new Date(q.validUntil).toLocaleDateString()}` : "Active"}
-                        </span>
-                      </td>
-                      <td>
-                        <strong>{mach}</strong>
-                        <span className="cell-sub">Rep: {q.representativeName || "Regional Sales"}</span>
-                      </td>
-                      <td>
-                        <strong>{cust}</strong>
-                        <span className="cell-sub">{comp}</span>
-                      </td>
-                      <td>
-                        <strong>{formatPrice(total)}</strong>
-                      </td>
-                      <td>{getStatusBadge(q.status)}</td>
-                      <td>
-                        <div className="d-flex align-items-center gap-2">
-                          <Link
-                            aria-label={`View details of ${qNum}`}
-                            className="table-action"
-                            to={`/quote-details#${q._id || qNum}`}
-                            title="View quote details"
-                          >
-                            <i className="bi bi-eye"></i>
-                          </Link>
-                          <button
-                            type="button"
-                            className="table-action btn-link border-0 p-0"
-                            onClick={() => handleDownloadPdf(q._id, qNum)}
-                            title="Download PDF"
-                          >
-                            <i className="bi bi-file-earmark-pdf"></i>
-                          </button>
-                          <button
-                            type="button"
-                            className="table-action btn-link border-0 p-0 text-danger"
-                            onClick={() => handleDeleteQuote(q._id, qNum)}
-                            title="Delete quotation"
-                          >
-                            <i className="bi bi-trash"></i>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                    return (
+                      <tr key={q._id || qNum}>
+                        <td>
+                          <strong>{qNum}</strong>
+                          <span className="cell-sub">
+                            {q.validUntil ? `Valid to ${new Date(q.validUntil).toLocaleDateString()}` : "Active"}
+                          </span>
+                        </td>
+                        <td>
+                          <strong>{mach}</strong>
+                          <span className="cell-sub">Rep: {q.representativeName || "Regional Sales"}</span>
+                        </td>
+                        <td>
+                          <strong>{cust}</strong>
+                          <span className="cell-sub">{comp}</span>
+                        </td>
+                        <td>
+                          <strong>{formatPrice(total)}</strong>
+                        </td>
+                        <td>{getStatusBadge(q.status)}</td>
+                        <td>
+                          <div className="d-flex align-items-center gap-2">
+                            <Link
+                              aria-label={`View details of ${qNum}`}
+                              className="table-action"
+                              to={`/quote-details#${q._id || qNum}`}
+                              title="View quote details"
+                            >
+                              <i className="bi bi-eye"></i>
+                            </Link>
+                            <button
+                              type="button"
+                              className="table-action btn-link border-0 p-0"
+                              onClick={() => handleDownloadPdf(q._id, qNum)}
+                              title="Download PDF"
+                            >
+                              <i className="bi bi-file-earmark-pdf"></i>
+                            </button>
+                            <button
+                              type="button"
+                              className="table-action btn-link border-0 p-0 text-danger"
+                              onClick={() => handleDeleteQuote(q._id, qNum)}
+                              title="Delete quotation"
+                            >
+                              <i className="bi bi-trash"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>

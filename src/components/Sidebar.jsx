@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { categoryService } from "../services/categoryService";
+import { enquiriesApi } from "../api/enquiriesApi";
+import { machinesApi } from "../api/machinesApi";
 
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
@@ -9,6 +11,8 @@ const Sidebar = ({ isOpen, onClose }) => {
   const [categoryCount, setCategoryCount] = useState(() => {
     return categoryService.getCategoriesSync().length;
   });
+  const [enquiryCount, setEnquiryCount] = useState(0);
+  const [machineCount, setMachineCount] = useState(0);
 
   useEffect(() => {
     const updateCount = () => {
@@ -16,14 +20,46 @@ const Sidebar = ({ isOpen, onClose }) => {
     };
 
     window.addEventListener("machine-categories-changed", updateCount);
+
+    // Fetch live active enquiries count
+    enquiriesApi
+      .getEnquiries({ limit: 50 })
+      .then((res) => {
+        const count =
+          res?.count ||
+          res?.total ||
+          (Array.isArray(res?.data) ? res.data.length : Array.isArray(res) ? res.length : 0);
+        setEnquiryCount(count);
+      })
+      .catch(() => {});
+
+    // Fetch live machines count
+    machinesApi
+      .getMachines()
+      .then((res) => {
+        const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        setMachineCount(list.length);
+      })
+      .catch(() => {});
+
     return () => {
       window.removeEventListener("machine-categories-changed", updateCount);
     };
   }, []);
 
-  const initials = user?.initials || (user?.name ? user.name.split(" ").map(n => n[0]).join("") : "JM");
-  const displayName = user?.name || "Jordan Miller";
-  const displayRole = user?.role || "Administrator";
+  const initials =
+    user?.initials ||
+    (user?.name
+      ? user.name
+          .split(" ")
+          .filter(Boolean)
+          .map((n) => n[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase()
+      : "AD");
+  const displayName = user?.name || "Administrator";
+  const displayRole = user?.role || "System Admin";
 
   const currentPath = location.pathname;
 
@@ -103,7 +139,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         >
           <i className="bi bi-box-seam"></i>
           <span>Machines</span>
-          <span className="nav-count">12</span>
+          {machineCount > 0 && <span className="nav-count">{machineCount}</span>}
         </NavLink>
         <NavLink
           className={`side-link ${isCategoriesActive ? "active" : ""}`}
@@ -112,7 +148,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         >
           <i className="bi bi-tags"></i>
           <span>Categories</span>
-          <span className="nav-count">{categoryCount}</span>
+          {categoryCount > 0 && <span className="nav-count">{categoryCount}</span>}
         </NavLink>
         <NavLink
           className={`side-link ${isOptionsActive ? "active" : ""}`}
@@ -149,7 +185,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         >
           <i className="bi bi-inbox"></i>
           <span>Enquiries</span>
-          <span className="nav-count nav-count-hot">8</span>
+          {enquiryCount > 0 && <span className="nav-count nav-count-hot">{enquiryCount}</span>}
         </NavLink>
         <NavLink
           className={`side-link ${isQuotesActive ? "active" : ""}`}
@@ -174,10 +210,10 @@ const Sidebar = ({ isOpen, onClose }) => {
           <span className="help-icon">
             <i className="bi bi-headset"></i>
           </span>
-          <strong>Need a hand?</strong>
-          <span>Visit the support center</span>
-          <a href="mailto:support@forgeworks.example">
-            Get support <i className="bi bi-arrow-up-right"></i>
+          <strong>Need assistance?</strong>
+          <span>Admin System Support</span>
+          <a href="mailto:admin@machinesystems.com">
+            Contact support <i className="bi bi-arrow-up-right"></i>
           </a>
         </div>
         <Link className="profile-link" to="/profile" onClick={onClose}>

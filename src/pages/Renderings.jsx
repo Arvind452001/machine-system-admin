@@ -2,8 +2,11 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
+import EmptyState from "../components/EmptyState";
 import { renderingsApi } from "../api/renderingsApi";
+import { machinesApi } from "../api/machinesApi";
 import Pagination from "../components/Pagination";
+import StatSpinner from "../components/StatSpinner";
 
 // Industrial SVG Blueprint fallback for offline or failed image URLs
 const FALLBACK_SVG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
@@ -28,101 +31,10 @@ const FALLBACK_SVG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
 </svg>
 `);
 
-const INITIAL_RENDERINGS = [
-  {
-    id: "rend-1",
-    machine: "MS-L4000 Ultra-Speed Fiber Laser Cutter",
-    category: "Laser Cutting",
-    view: "Isometric Primary View · Linear motor drive & dual shuttle pallet enclosure",
-    angle: "Isometric 45°",
-    resolution: "3840 × 2160 4K",
-    format: "WebGL / PNG",
-    image: "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=1200&q=85",
-    alt: "MS-L4000 Fiber laser cutting unit",
-    status: "Published",
-    updated: "Active in Configurator",
-    viewsCount: 4,
-    link: "/machines",
-  },
-  {
-    id: "rend-2",
-    machine: "MS-M500 5-Axis Machining Center",
-    category: "Milling Centers",
-    view: "Trunnion Cutaway View · B/C rotary tilt table & 24,000 RPM HSK spindle",
-    angle: "Front Orthographic",
-    resolution: "3840 × 2160 4K",
-    format: "CAD Blueprint",
-    image: "https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?auto=format&fit=crop&w=1200&q=85",
-    alt: "5-axis machining center",
-    status: "Published",
-    updated: "Active in Configurator",
-    viewsCount: 6,
-    link: "/machines",
-  },
-  {
-    id: "rend-3",
-    machine: "MS-V850 Precision Vertical Machining Center",
-    category: "Milling Centers",
-    view: "Structural Perspective · Meehanite C-frame casting & 30-pocket tool carousel",
-    angle: "Side Profile",
-    resolution: "2560 × 1440 QHD",
-    format: "WebGL / PNG",
-    image: "https://images.unsplash.com/photo-1567789884554-0b844b597180?auto=format&fit=crop&w=1200&q=85",
-    alt: "Vertical machining center",
-    status: "Published",
-    updated: "Active in Configurator",
-    viewsCount: 3,
-    link: "/machines",
-  },
-  {
-    id: "rend-4",
-    machine: "MS-T1000 CNC Turning Center",
-    category: "Turning Lathes",
-    view: "Turret & Tailstock View · 12-station servo turret & programmable tailstock",
-    angle: "Tooling Close-up",
-    resolution: "3840 × 2160 4K",
-    format: "Schematic 3D",
-    image: "https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=1200&q=85",
-    alt: "CNC turning lathe",
-    status: "Published",
-    updated: "Active in Configurator",
-    viewsCount: 5,
-    link: "/machines",
-  },
-  {
-    id: "rend-5",
-    machine: "FX-420 Precision Servo Press",
-    category: "Forming Presses",
-    view: "Die Area & Hydraulic Platen · High-rigidity tie rod construction with light curtains",
-    angle: "Work Envelope",
-    resolution: "2560 × 1440 QHD",
-    format: "WebGL / PNG",
-    image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1200&q=85",
-    alt: "Servo press machine",
-    status: "In Review",
-    updated: "Pending QA Approval",
-    viewsCount: 2,
-    link: "/machines",
-  },
-  {
-    id: "rend-6",
-    machine: "MS-RoboWeld Automated Cell",
-    category: "Automation Cells",
-    view: "Full Cell Topography · 6-axis articulated arm with dual safety light fences",
-    angle: "Exploded Overview",
-    resolution: "3840 × 2160 4K",
-    format: "Isometric 30°",
-    image: "https://images.unsplash.com/photo-1617791160505-6f00b51616ec?auto=format&fit=crop&w=1200&q=85",
-    alt: "Robotic welding cell",
-    status: "Published",
-    updated: "Active in Configurator",
-    viewsCount: 4,
-    link: "/machines",
-  },
-];
-
 const Renderings = () => {
-  const [renderings, setRenderings] = useState(INITIAL_RENDERINGS);
+  const [renderings, setRenderings] = useState([]);
+  const [availableMachines, setAvailableMachines] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [machineFilter, setMachineFilter] = useState("All machines");
   const [statusFilter, setStatusFilter] = useState("All statuses");
@@ -131,7 +43,7 @@ const Renderings = () => {
   const [previewItem, setPreviewItem] = useState(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [newRenderForm, setNewRenderForm] = useState({
-    machine: "MS-L4000 Ultra-Speed Fiber Laser Cutter",
+    machine: "",
     view: "",
     angle: "Isometric 45°",
     imageUrl: "",
@@ -142,17 +54,40 @@ const Renderings = () => {
 
   useEffect(() => {
     let mounted = true;
+    setLoading(true);
+
+    // Fetch renderings
     renderingsApi
       .getRenderings()
       .then((res) => {
         if (!mounted) return;
         const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        setRenderings(list);
+      })
+      .catch((err) => {
+        console.warn("Could not load renderings:", err.message);
+        if (mounted) setRenderings([]);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    // Fetch machines list for select options
+    machinesApi
+      .getMachines()
+      .then((res) => {
+        if (!mounted) return;
+        const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        setAvailableMachines(list);
         if (list.length > 0) {
-          setRenderings(list);
+          setNewRenderForm((prev) => ({
+            ...prev,
+            machine: prev.machine || list[0].name || list[0].model || "",
+          }));
         }
       })
       .catch((err) => {
-        console.warn("Using offline fallback in Renderings:", err.message);
+        console.warn("Could not load machines for renderings filter:", err.message);
       });
 
     return () => {
@@ -174,14 +109,14 @@ const Renderings = () => {
 
     const created = {
       id: "rend-" + Date.now(),
-      machine: newRenderForm.machine,
+      machine: newRenderForm.machine || "Industrial Machine",
       category: "Industrial Machinery",
       view: newRenderForm.view,
       angle: newRenderForm.angle,
       resolution: "3840 × 2160 4K",
       format: "WebGL / PNG",
-      image: newRenderForm.imageUrl || INITIAL_RENDERINGS[0].image,
-      alt: newRenderForm.machine,
+      image: newRenderForm.imageUrl || FALLBACK_SVG,
+      alt: newRenderForm.machine || "Machine render",
       status: newRenderForm.status,
       updated: "Just added",
       viewsCount: 1,
@@ -191,7 +126,7 @@ const Renderings = () => {
     setRenderings([created, ...renderings]);
     setIsUploadModalOpen(false);
     setNewRenderForm({
-      machine: "MS-L4000 Ultra-Speed Fiber Laser Cutter",
+      machine: availableMachines[0]?.name || "",
       view: "",
       angle: "Isometric 45°",
       imageUrl: "",
@@ -242,7 +177,10 @@ const Renderings = () => {
   );
 
   const uniqueMachines = Array.from(
-    new Set(renderings.map((r) => r.machine || r.machineName).filter(Boolean))
+    new Set([
+      ...renderings.map((r) => r.machine || r.machineName).filter(Boolean),
+      ...availableMachines.map((m) => m.name || m.model).filter(Boolean),
+    ])
   );
 
   return (
@@ -363,24 +301,32 @@ const Renderings = () => {
         <section className="summary-strip" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginBottom: "20px" }}>
           <div className="summary-item" style={{ background: "#fff", border: "1px solid #ebe7e1", borderRadius: "10px", padding: "16px 20px" }}>
             <span style={{ fontSize: "12px", color: "#858780", textTransform: "uppercase", letterSpacing: "0.5px" }}>Total Visual Assets</span>
-            <strong style={{ fontSize: "24px", display: "block", marginTop: "4px", color: "#171816" }}>{renderings.length}</strong>
+            <strong style={{ fontSize: "24px", display: "block", marginTop: "4px", color: "#171816" }}>
+              {loading ? <StatSpinner /> : renderings.length}
+            </strong>
             <small style={{ color: "#22c55e", fontSize: "11px", fontWeight: "600" }}>
-              <i className="bi bi-check-circle-fill"></i> Fully synced with catalog
+              <i className="bi bi-check-circle-fill"></i> {loading ? "Loading..." : "Live database count"}
             </small>
           </div>
 
           <div className="summary-item" style={{ background: "#fff", border: "1px solid #ebe7e1", borderRadius: "10px", padding: "16px 20px" }}>
             <span style={{ fontSize: "12px", color: "#858780", textTransform: "uppercase", letterSpacing: "0.5px" }}>Active In Configurator</span>
             <strong style={{ fontSize: "24px", display: "block", marginTop: "4px", color: "#171816" }}>
-              {renderings.filter((r) => (r.status || "").toLowerCase().includes("pub")).length}
+              {loading ? (
+                <StatSpinner />
+              ) : (
+                renderings.filter((r) => (r.status || "").toLowerCase().includes("pub")).length
+              )}
             </strong>
-            <small style={{ color: "#858780", fontSize: "11px" }}>High-Res 3D Viewports</small>
+            <small style={{ color: "#858780", fontSize: "11px" }}>{loading ? "Loading..." : "High-Res 3D Viewports"}</small>
           </div>
 
           <div className="summary-item" style={{ background: "#fff", border: "1px solid #ebe7e1", borderRadius: "10px", padding: "16px 20px" }}>
             <span style={{ fontSize: "12px", color: "#858780", textTransform: "uppercase", letterSpacing: "0.5px" }}>Machine Platforms Covered</span>
-            <strong style={{ fontSize: "24px", display: "block", marginTop: "4px", color: "#171816" }}>{uniqueMachines.length}</strong>
-            <small style={{ color: "var(--accent)", fontSize: "11px", fontWeight: "600" }}>Milling, Laser &amp; Lathe</small>
+            <strong style={{ fontSize: "24px", display: "block", marginTop: "4px", color: "#171816" }}>
+              {loading ? <StatSpinner /> : uniqueMachines.length}
+            </strong>
+            <small style={{ color: "var(--accent)", fontSize: "11px", fontWeight: "600" }}>{loading ? "Loading..." : "Milling, Laser & Lathe"}</small>
           </div>
 
           <div className="summary-item" style={{ background: "#fff", border: "1px solid #ebe7e1", borderRadius: "10px", padding: "16px 20px" }}>
@@ -458,8 +404,33 @@ const Renderings = () => {
           </div>
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="p-5 text-center my-4" style={{ background: "#fff", borderRadius: "10px", border: "1px solid #ebe7e1" }}>
+            <div className="spinner-border text-secondary mb-3" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <p className="text-muted mb-0">Loading machine rendering assets...</p>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && filteredRenderings.length === 0 && (
+          <EmptyState
+            icon="bi-image"
+            title="Data is not found"
+            message={
+              searchTerm || machineFilter !== "All machines" || statusFilter !== "All statuses"
+                ? "No 3D renderings match the selected filter criteria."
+                : "No 3D machine renderings or visual CAD layers are currently present in the system."
+            }
+            actionText="Upload rendering"
+            onAction={() => setIsUploadModalOpen(true)}
+          />
+        )}
+
         {/* View Mode: Grid View */}
-        {viewMode === "grid" && (
+        {!loading && filteredRenderings.length > 0 && viewMode === "grid" && (
           <section
             className="rendering-grid"
             style={{
@@ -708,7 +679,7 @@ const Renderings = () => {
         )}
 
         {/* View Mode: Table View */}
-        {viewMode === "table" && (
+        {!loading && filteredRenderings.length > 0 && viewMode === "table" && (
           <section className="table-panel" style={{ background: "#fff", border: "1px solid #ebe7e1", borderRadius: "10px", overflow: "hidden", marginBottom: "28px" }}>
             <div className="table-responsive">
               <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
@@ -800,13 +771,15 @@ const Renderings = () => {
         )}
 
         {/* Pagination */}
-        <Pagination
-          currentPage={currentPage}
-          totalItems={filteredRenderings.length}
-          pageSize={PAGE_SIZE}
-          onPageChange={setCurrentPage}
-          itemName="rendering assets"
-        />
+        {!loading && filteredRenderings.length > PAGE_SIZE && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredRenderings.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setCurrentPage}
+            itemName="rendering assets"
+          />
+        )}
 
         {/* High-Res Lightbox Modal */}
         {previewItem && (
@@ -954,9 +927,13 @@ const Renderings = () => {
                     onChange={(e) => setNewRenderForm({ ...newRenderForm, machine: e.target.value })}
                     style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px" }}
                   >
-                    {uniqueMachines.map((m, idx) => (
-                      <option key={idx} value={m}>{m}</option>
-                    ))}
+                    {uniqueMachines.length > 0 ? (
+                      uniqueMachines.map((m, idx) => (
+                        <option key={idx} value={m}>{m}</option>
+                      ))
+                    ) : (
+                      <option value="Industrial Machine">Industrial Machine</option>
+                    )}
                   </select>
                 </div>
 
@@ -999,7 +976,7 @@ const Renderings = () => {
                   </label>
                   <input
                     type="url"
-                    placeholder="https://... (or leave blank for high-res standard render)"
+                    placeholder="https://... (or leave blank for standard schematic)"
                     value={newRenderForm.imageUrl}
                     onChange={(e) => setNewRenderForm({ ...newRenderForm, imageUrl: e.target.value })}
                     style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px" }}

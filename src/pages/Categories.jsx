@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
 import Pagination from "../components/Pagination";
+import StatSpinner from "../components/StatSpinner";
 import { categoryService } from "../services/categoryService";
 
 const AVAILABLE_ICONS = [
@@ -240,18 +241,24 @@ const Categories = () => {
         <section className="summary-strip">
           <div className="summary-item">
             <span>Total Categories</span>
-            <strong>{categories.length.toString().padStart(2, "0")}</strong>
-            <small>{totalActive} active in catalog</small>
+            <strong>
+              {loading ? <StatSpinner /> : categories.length.toString().padStart(2, "0")}
+            </strong>
+            <small>{loading ? "Loading..." : `${totalActive} active in catalog`}</small>
           </div>
           <div className="summary-item">
             <span>Active Classifications</span>
-            <strong>{totalActive.toString().padStart(2, "0")}</strong>
-            <small>{totalDraft} draft / unlisted</small>
+            <strong>
+              {loading ? <StatSpinner /> : totalActive.toString().padStart(2, "0")}
+            </strong>
+            <small>{loading ? "Loading..." : `${totalDraft} draft / unlisted`}</small>
           </div>
           <div className="summary-item">
             <span>Catalog Distribution</span>
-            <strong>{totalMachinesTagged.toString().padStart(2, "0")}</strong>
-            <small>Active machines categorized</small>
+            <strong>
+              {loading ? <StatSpinner /> : totalMachinesTagged.toString().padStart(2, "0")}
+            </strong>
+            <small>{loading ? "Loading..." : "Active machines categorized"}</small>
           </div>
         </section>
 
@@ -316,13 +323,13 @@ const Categories = () => {
                     <td colSpan={6} style={{ textAlign: "center", padding: "48px 20px" }}>
                       <div style={{ maxWidth: "360px", margin: "0 auto", textAlign: "center" }}>
                         <i className="bi bi-tags" style={{ fontSize: "32px", color: "#c5c6bf", display: "block", marginBottom: "12px" }}></i>
-                        <strong style={{ display: "block", marginBottom: "6px", fontSize: "14px" }}>
-                          No categories found
+                        <strong style={{ display: "block", marginBottom: "6px", fontSize: "15px" }}>
+                          Data is not found
                         </strong>
                         <p style={{ color: "#85867f", fontSize: "12px", marginBottom: "16px" }}>
                           {searchTerm
                             ? `No categories match "${searchTerm}". Try resetting your filter.`
-                            : "Create your first machine category to organize products in the configurator."}
+                            : "No categories currently found in the database. Create your first machine category to get started."}
                         </p>
                         <button className="btn btn-accent" onClick={openCreateModal}>
                           <i className="bi bi-plus-lg"></i> Create category
@@ -421,22 +428,6 @@ const Categories = () => {
           </div>
 
           <Pagination currentPage={currentPage} totalItems={filteredCategories.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} itemName="categories" />
-          <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 16px", borderTop: "1px solid #f0f0ee" }}>
-            <button
-              className="btn-subtle"
-              style={{ height: "30px", fontSize: "11px", padding: "0 10px" }}
-              onClick={() => {
-                if (window.confirm("Reset categories to default initial set?")) {
-                  categoryService.resetDefaults();
-                  loadCategories();
-                  showNotification("Categories reset to default catalog values.");
-                }
-              }}
-            >
-              <i className="bi bi-arrow-counterclockwise" style={{ marginRight: "4px" }}></i>
-              Reset Catalog
-            </button>
-          </div>
         </section>
 
         {/* Create / Edit Category Modal */}

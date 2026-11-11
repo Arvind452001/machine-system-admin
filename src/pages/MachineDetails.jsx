@@ -1,55 +1,37 @@
 import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useLocation } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
+import EmptyState from "../components/EmptyState";
 import { machinesApi } from "../api/machinesApi";
-
-const FALLBACK_DETAIL = {
-  _id: "6ad9fc28e39daefd54e568ff",
-  name: "MS-L4000 Ultra-Speed Fiber Laser Cutter",
-  slug: "ms-l4000",
-  sku: "MS-LC-4000-FIBER",
-  category: "Laser processing",
-  basePrice: 228000,
-  description:
-    "Cuts up to 40mm stainless steel and copper with clean-edge nitrogen cutting technology. Features linear motor drives achieving 2.8G acceleration.",
-  status: "published",
-  images: [
-    "https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=1200&q=80",
-  ],
-  availableOptions: [
-    { name: "High-Pressure Coolant (70 Bar)", code: "OPT-COOL-70B", priceDelta: 8500 },
-    { name: "Automatic Robotic Arm Workpiece Loading", code: "OPT-AUTO-ROBOT", priceDelta: 28000 },
-    { name: "Optical Tool Setter & Renishaw Probe", code: "OPT-TOOL-PROBE", priceDelta: 6200 },
-  ],
-  specifications: {
-    "Laser Power": "12 kW Fiber Source",
-    "Working Sheet Size": "4000 x 2000 mm",
-    "Max Positioning Speed": "180 m/min",
-    "Acceleration": "2.8 G",
-  },
-};
 
 const MachineDetails = () => {
   const [searchParams] = useSearchParams();
-  const machineId = searchParams.get("id") || "6ad9fc28e39daefd54e568ff";
+  const location = useLocation();
+  const machineId = (searchParams.get("id") || location.hash.replace("#", "")).trim();
 
-  const [machine, setMachine] = useState(FALLBACK_DETAIL);
-  const [loading, setLoading] = useState(true);
+  const [machine, setMachine] = useState(null);
+  const [loading, setLoading] = useState(Boolean(machineId));
 
   useEffect(() => {
     let mounted = true;
+
+    if (!machineId) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     machinesApi
       .getMachine(machineId)
       .then((res) => {
         if (!mounted) return;
         const m = res?.data || res;
-        if (m) {
-          setMachine(m);
-        }
+        setMachine(m || null);
       })
       .catch((err) => {
-        console.warn("Using offline fallback in MachineDetails:", err.message);
+        console.warn("Could not load machine details:", err.message);
+        if (mounted) setMachine(null);
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -64,7 +46,7 @@ const MachineDetails = () => {
     <>
       <Link to="/machines">Machines</Link>
       <i className="bi bi-chevron-right"></i>
-      <strong>{machine.name || "Machine details"}</strong>
+      <strong>{machine?.name || "Machine details"}</strong>
     </>
   );
 
@@ -76,14 +58,57 @@ const MachineDetails = () => {
     }).format(val || 0);
   };
 
+  if (loading) {
+    return (
+      <AdminLayout breadcrumb={breadcrumb} bodyClass="detail-shell-page">
+        <div className="page-wrap text-center p-5">
+          <div style={{ color: "var(--text-muted, #85867f)", padding: "4rem 0" }}>
+            <i className="bi bi-arrow-repeat me-2" style={{ display: "inline-block", animation: "spin 1s linear infinite", fontSize: "2rem" }}></i>
+            <p className="mt-3">Loading machine details...</p>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (!machine) {
+    return (
+      <AdminLayout breadcrumb={breadcrumb} bodyClass="detail-shell-page">
+        <div className="page-wrap">
+          <EmptyState
+            icon="bi-cpu"
+            title="Data is not found"
+            message={
+              machineId
+                ? `The machine record with ID "${machineId}" could not be found or has been removed.`
+                : "No machine identifier was provided in the request URL."
+            }
+            actionText="Back to all machines"
+            actionLink="/machines"
+          />
+        </div>
+      </AdminLayout>
+    );
+  }
+
   const isPublished =
     (machine.status || "").toLowerCase() === "published" ||
     (machine.status || "").toLowerCase() === "active";
 
   const mainImage =
-    Array.isArray(machine.images) && machine.images.length > 0
-      ? machine.images[0]
-      : "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=1200&q=85";
+    machine.imageUrl ||
+    machine.image ||
+    machine.thumbnail ||
+    (Array.isArray(machine.images) && machine.images.length > 0 ? machine.images[0] : "") ||
+    "data:image/svg+xml;charset=utf-8," +
+      encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+  <rect width="100%" height="100%" fill="#141513" />
+  <circle cx="400" cy="225" r="70" fill="none" stroke="#c94f2d" stroke-width="2" stroke-dasharray="6 6"/>
+  <rect x="330" y="170" width="140" height="110" rx="8" fill="#1b1c19" stroke="#41433e" stroke-width="2"/>
+  <text x="400" y="320" fill="#f5f5f0" font-family="Inter, sans-serif" font-size="14" font-weight="600" text-anchor="middle">MACHINE SYSTEMS</text>
+</svg>
+`);
 
   const optionsList = Array.isArray(machine.availableOptions) ? machine.availableOptions : [];
 

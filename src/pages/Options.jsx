@@ -4,79 +4,11 @@ import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
 import { optionsApi } from "../api/optionsApi";
 import Pagination from "../components/Pagination";
+import StatSpinner from "../components/StatSpinner";
 import { machinesApi } from "../api/machinesApi";
 
-const FALLBACK_OPTIONS = [
-  {
-    _id: "6ad9fc24e39daefd54e568e7",
-    name: "High-Pressure Through-Spindle Coolant (70 Bar)",
-    code: "OPT-COOL-70B",
-    category: "cooling",
-    priceDelta: 8500,
-    description: "Direct 70 bar high-pressure coolant through spindle for deep hole drilling and titanium chip clearance.",
-    status: "active",
-    incompatibleWith: [],
-    requiresOption: [],
-  },
-  {
-    _id: "6ad9fc24e39daefd54e568ea",
-    name: "Automatic Robotic Arm Workpiece Loading (15kg payload)",
-    code: "OPT-AUTO-ROBOT",
-    category: "automation",
-    priceDelta: 28000,
-    description: "Integrated 6-axis collaborative robotic cell for lights-out automated loading and unloading.",
-    status: "active",
-    incompatibleWith: [],
-    requiresOption: [],
-  },
-  {
-    _id: "6ad9fc25e39daefd54e568ed",
-    name: "Optical Tool Setter & Renishaw Workpiece Probe",
-    code: "OPT-TOOL-PROBE",
-    category: "tooling",
-    priceDelta: 6200,
-    description: "Automated in-cycle part alignment and broken tool detection package with wireless probe.",
-    status: "active",
-    incompatibleWith: [],
-    requiresOption: [],
-  },
-  {
-    _id: "6ad9fc25e39daefd54e568f0",
-    name: "High-Torque Synchronous Spindle Upgrade (15,000 RPM)",
-    code: "OPT-SPINDLE-15K",
-    category: "general",
-    priceDelta: 14500,
-    description: "High-speed oil-air lubricated spindle rated for continuous 35kW aerospace alloy cutting.",
-    status: "active",
-    incompatibleWith: [],
-    requiresOption: [],
-  },
-  {
-    _id: "6ad9fc26e39daefd54e568f3",
-    name: "Hermetic Full Machine Enclosure with Mist Collector",
-    code: "OPT-ENCL-MIST",
-    category: "enclosure",
-    priceDelta: 4900,
-    description: "Complete noise suppression enclosure with electrostatic oil mist extraction system.",
-    status: "active",
-    incompatibleWith: [],
-    requiresOption: [],
-  },
-  {
-    _id: "6ad9fc26e39daefd54e568f6",
-    name: "Extended 3-Year Enterprise Care & Onsite Preventive Maintenance",
-    code: "OPT-SERV-3YR",
-    category: "service",
-    priceDelta: 9200,
-    description: "Comprehensive 36-month SLA covering parts, bi-annual calibration, and 24/7 priority engineer support.",
-    status: "active",
-    incompatibleWith: [],
-    requiresOption: [],
-  },
-];
-
 const Options = () => {
-  const [options, setOptions] = useState(FALLBACK_OPTIONS);
+  const [options, setOptions] = useState([]);
   const [machines, setMachines] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All categories");
@@ -101,12 +33,11 @@ const Options = () => {
       .then((res) => {
         if (!mounted) return;
         const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        if (list.length > 0) {
-          setOptions(list);
-        }
+        setOptions(list);
       })
       .catch((err) => {
-        console.warn("Using offline options fallback:", err.message);
+        console.warn("Could not load options from API:", err.message);
+        setOptions([]);
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -325,17 +256,18 @@ const Options = () => {
         <section className="summary-strip">
           <div className="summary-item">
             <span>Active options</span>
-            <strong>{options.length}</strong>
-            <small>Live catalog add-ons</small>
+            <strong>{loading ? <StatSpinner /> : options.length}</strong>
+            <small>{loading ? "Loading..." : "Live catalog add-ons"}</small>
           </div>
           <div className="summary-item">
             <span>Categories</span>
-            <strong>{uniqueCategories.length || 6}</strong>
+            <strong>{loading ? <StatSpinner /> : uniqueCategories.length}</strong>
+            <small>{loading ? "Loading..." : "Option groups"}</small>
           </div>
           <div className="summary-item">
             <span>Rule engine</span>
-            <strong>Active</strong>
-            <small>Dependency validation enabled</small>
+            <strong>{loading ? <StatSpinner /> : "Active"}</strong>
+            <small>{loading ? "Syncing..." : "Dependency validation enabled"}</small>
           </div>
         </section>
 
@@ -392,45 +324,73 @@ const Options = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredOptions.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((opt) => {
-                  const isActive =
-                    (opt.status || "").toLowerCase() === "active" || Boolean(opt.isActive);
-                  const reqCount = Array.isArray(opt.requiresOption) ? opt.requiresOption.length : 0;
-                  const incompCount = Array.isArray(opt.incompatibleWith)
-                    ? opt.incompatibleWith.length
-                    : 0;
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: "center", padding: "36px 16px", color: "var(--text-muted, #85867f)" }}>
+                      <i className="bi bi-arrow-repeat me-2" style={{ display: "inline-block", animation: "spin 1s linear infinite" }}></i>
+                      Loading configuration options...
+                    </td>
+                  </tr>
+                ) : filteredOptions.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: "center", padding: "48px 16px" }}>
+                      <div style={{ maxWidth: "360px", margin: "0 auto", textAlign: "center" }}>
+                        <i className="bi bi-sliders" style={{ fontSize: "32px", color: "#c5c6bf", display: "block", marginBottom: "12px" }}></i>
+                        <strong style={{ display: "block", marginBottom: "6px", fontSize: "15px" }}>
+                          Data is not found
+                        </strong>
+                        <p style={{ color: "#85867f", fontSize: "12px", marginBottom: "16px" }}>
+                          {searchTerm || categoryFilter !== "All categories" || statusFilter !== "All statuses"
+                            ? "No configuration options match the selected filters."
+                            : "No configurable add-ons or options currently recorded."}
+                        </p>
+                        <Link to="/add-option" className="btn btn-accent btn-sm">
+                          <i className="bi bi-plus-lg me-1"></i> Add new option
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredOptions.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((opt) => {
+                    const isActive =
+                      (opt.status || "").toLowerCase() === "active" || Boolean(opt.isActive);
+                    const reqCount = Array.isArray(opt.requiresOption) ? opt.requiresOption.length : 0;
+                    const incompCount = Array.isArray(opt.incompatibleWith)
+                      ? opt.incompatibleWith.length
+                      : 0;
 
-                  return (
-                    <tr key={opt._id || opt.code || opt.id}>
-                      <td>
-                        <strong>{opt.name}</strong>
-                        <span className="cell-sub">{opt.description || opt.sub || "Modular upgrade"}</span>
-                      </td>
-                      <td>
-                        <strong>{opt.code}</strong>
-                        <span className="cell-sub">{(opt.category || "General").toUpperCase()}</span>
-                      </td>
-                      <td>
-                        <strong>+{formatPrice(opt.priceDelta || opt.price)}</strong>
-                      </td>
-                      <td>
-                        {reqCount > 0 || incompCount > 0 ? (
-                          <span>
-                            {reqCount > 0 && <small className="d-block text-primary">Requires {reqCount} option(s)</small>}
-                            {incompCount > 0 && <small className="d-block text-danger">Incompatible with {incompCount}</small>}
+                    return (
+                      <tr key={opt._id || opt.code || opt.id}>
+                        <td>
+                          <strong>{opt.name}</strong>
+                          <span className="cell-sub">{opt.description || opt.sub || "Modular upgrade"}</span>
+                        </td>
+                        <td>
+                          <strong>{opt.code}</strong>
+                          <span className="cell-sub">{(opt.category || "General").toUpperCase()}</span>
+                        </td>
+                        <td>
+                          <strong>+{formatPrice(opt.priceDelta || opt.price)}</strong>
+                        </td>
+                        <td>
+                          {reqCount > 0 || incompCount > 0 ? (
+                            <span>
+                              {reqCount > 0 && <small className="d-block text-primary">Requires {reqCount} option(s)</small>}
+                              {incompCount > 0 && <small className="d-block text-danger">Incompatible with {incompCount}</small>}
+                            </span>
+                          ) : (
+                            <span style={{ color: "gray" }}>Standalone</span>
+                          )}
+                        </td>
+                        <td>
+                          <span className={`table-status ${isActive ? "" : "status-draft"}`}>
+                            {isActive ? "Active" : "Draft"}
                           </span>
-                        ) : (
-                          <span style={{ color: "gray" }}>Standalone</span>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`table-status ${isActive ? "" : "status-draft"}`}>
-                          {isActive ? "Active" : "Draft"}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>

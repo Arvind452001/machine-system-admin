@@ -2,49 +2,23 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
+import StatSpinner from "../components/StatSpinner";
 import { useAuth } from "../context/AuthContext";
 import { statsApi } from "../api/statsApi";
-
-const FALLBACK_ENQUIRIES = [
-  {
-    id: "amelia",
-    customer: { name: "Amelia Laurent", company: "Nordic Materials Co.", country: "France" },
-    machine: { name: "FX-420 Press", category: "Hydraulic forming" },
-    status: "new",
-    timeAgo: "12 min ago",
-  },
-  {
-    id: "martin",
-    customer: { name: "Martin Keller", company: "Keller Anlagenbau", country: "Germany" },
-    machine: { name: "CR-80 Cutter", category: "Precision cutting" },
-    status: "in_review",
-    timeAgo: "48 min ago",
-  },
-  {
-    id: "sofia",
-    customer: { name: "Sofia Papadakis", company: "Aegean Industrial", country: "Greece" },
-    machine: { name: "MX-220 Mixer", category: "Industrial mixing" },
-    status: "assigned",
-    timeAgo: "2 hours ago",
-  },
-  {
-    id: "james",
-    customer: { name: "James Thompson", company: "Thompson & Sons", country: "United Kingdom" },
-    machine: { name: "FX-420 Press", category: "Hydraulic forming" },
-    status: "quote_ready",
-    timeAgo: "Yesterday",
-  },
-];
 
 const Dashboard = () => {
   const { user } = useAuth();
   const [metrics, setMetrics] = useState({
-    activeMachines: 5,
-    openEnquiries: 2,
-    quotesInProgress: 2,
-    indicativePipeline: 1593200,
+    activeMachines: 0,
+    openEnquiries: 0,
+    quotesInProgress: 0,
+    indicativePipeline: 0,
+    totalEnquiries: 0,
+    acceptedQuotes: 0,
+    publishedMachines: 0,
+    totalQuotes: 0,
   });
-  const [recentEnquiries, setRecentEnquiries] = useState(FALLBACK_ENQUIRIES);
+  const [recentEnquiries, setRecentEnquiries] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -56,15 +30,15 @@ const Dashboard = () => {
         const data = res?.data || res;
         if (data) {
           if (data.metrics) {
-            setMetrics(data.metrics);
+            setMetrics((prev) => ({ ...prev, ...data.metrics }));
           }
-          if (Array.isArray(data.recentEnquiries) && data.recentEnquiries.length > 0) {
+          if (Array.isArray(data.recentEnquiries)) {
             setRecentEnquiries(data.recentEnquiries);
           }
         }
       })
       .catch((err) => {
-        console.warn("Using offline stats fallback in Admin Dashboard:", err.message);
+        console.warn("Could not load stats from Admin API:", err.message);
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -135,10 +109,16 @@ const Dashboard = () => {
                 </span>
               </div>
               <div className="stat-number">
-                {String(metrics.publishedMachines ?? metrics.activeMachines ?? 5).padStart(2, "0")}{" "}
-                <span className="stat-change">
-                  <i className="bi bi-arrow-up-right"></i> Live
-                </span>
+                {loading ? (
+                  <StatSpinner />
+                ) : (
+                  <>
+                    {String(metrics.publishedMachines ?? metrics.activeMachines ?? 0).padStart(2, "0")}{" "}
+                    <span className="stat-change">
+                      <i className="bi bi-arrow-up-right"></i> Live
+                    </span>
+                  </>
+                )}
               </div>
               <div className="stat-foot">Available in the configurator</div>
             </div>
@@ -152,10 +132,16 @@ const Dashboard = () => {
                 </span>
               </div>
               <div className="stat-number">
-                {String(metrics.openEnquiries ?? 2).padStart(2, "0")}{" "}
-                <span className="stat-change">
-                  <i className="bi bi-arrow-up-right"></i> Active
-                </span>
+                {loading ? (
+                  <StatSpinner />
+                ) : (
+                  <>
+                    {String(metrics.openEnquiries ?? 0).padStart(2, "0")}{" "}
+                    <span className="stat-change">
+                      <i className="bi bi-arrow-up-right"></i> Active
+                    </span>
+                  </>
+                )}
               </div>
               <div className="stat-foot">Awaiting representative review</div>
             </div>
@@ -169,8 +155,14 @@ const Dashboard = () => {
                 </span>
               </div>
               <div className="stat-number">
-                {String(metrics.quotesInProgress ?? 2).padStart(2, "0")}{" "}
-                <span className="stat-neutral">Awaiting client</span>
+                {loading ? (
+                  <StatSpinner />
+                ) : (
+                  <>
+                    {String(metrics.quotesInProgress ?? 0).padStart(2, "0")}{" "}
+                    <span className="stat-neutral">Awaiting client</span>
+                  </>
+                )}
               </div>
               <div className="stat-foot">Issued quotations in pipeline</div>
             </div>
@@ -184,10 +176,16 @@ const Dashboard = () => {
                 </span>
               </div>
               <div className="stat-number">
-                {formatPipeline(metrics.indicativePipeline || metrics.pipelineValue || 1593200)}
-                <span className="stat-change">
-                  <i className="bi bi-arrow-up-right"></i> Active
-                </span>
+                {loading ? (
+                  <StatSpinner />
+                ) : (
+                  <>
+                    {formatPipeline(metrics.indicativePipeline || metrics.pipelineValue || 0)}
+                    <span className="stat-change">
+                      <i className="bi bi-arrow-up-right"></i> Active
+                    </span>
+                  </>
+                )}
               </div>
               <div className="stat-foot">Based on submitted configurations</div>
             </div>
@@ -195,14 +193,16 @@ const Dashboard = () => {
         </section>
 
         <section className="row g-2">
-          <article className="col-lg-8" id="enquiries">
+          <article className="col-lg-0" id="enquiries">
             <div className="panel enquiry-panel h-100">
               <div className="panel-heading">
                 <div>
                   <div className="panel-kicker">CUSTOMER ACTIVITY</div>
                   <h2>
                     Recent enquiries{" "}
-                    <span className="heading-count">{recentEnquiries.length} records</span>
+                    <span className="heading-count">
+                      {loading ? <StatSpinner size="13px" /> : `${recentEnquiries.length} records`}
+                    </span>
                   </h2>
                 </div>
                 <Link className="text-link" to="/enquiries">
@@ -224,63 +224,86 @@ const Dashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {recentEnquiries.map((enq, index) => {
-                      const custName =
-                        enq.customer?.name ||
-                        enq.fullName ||
-                        `${enq.firstName || ""} ${enq.lastName || ""}`.trim() ||
-                        "Valued Customer";
-                      const custCompany = enq.customer?.company || enq.company || "Direct enquiry";
-                      const custCountry = enq.customer?.country || enq.country || enq.region || "Global";
-                      const machineName =
-                        enq.machine?.name || enq.machineName || "Industrial Machinery";
-                      const machineSku = enq.machine?.sku || enq.machineCode || "Configured System";
-                      const dateDisplay = enq.createdAt
-                        ? new Date(enq.createdAt).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                          })
-                        : enq.timeAgo || "Recently";
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: "center", padding: "36px 16px", color: "var(--text-muted, #85867f)" }}>
+                          <i className="bi bi-arrow-repeat me-2" style={{ display: "inline-block", animation: "spin 1s linear infinite" }}></i>
+                          Loading recent enquiries...
+                        </td>
+                      </tr>
+                    ) : recentEnquiries.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: "center", padding: "40px 16px" }}>
+                          <div style={{ maxWidth: "340px", margin: "0 auto", textAlign: "center" }}>
+                            <i className="bi bi-inbox" style={{ fontSize: "28px", color: "#c5c6bf", display: "block", marginBottom: "8px" }}></i>
+                            <strong style={{ display: "block", marginBottom: "4px", fontSize: "14px" }}>
+                              Data is not found
+                            </strong>
+                            <p style={{ color: "#85867f", fontSize: "12px", margin: 0 }}>
+                              No customer enquiries currently found in the system.
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      recentEnquiries.map((enq, index) => {
+                        const custName =
+                          enq.customer?.name ||
+                          enq.fullName ||
+                          `${enq.firstName || ""} ${enq.lastName || ""}`.trim() ||
+                          "Valued Customer";
+                        const custCompany = enq.customer?.company || enq.company || "Direct enquiry";
+                        const custCountry = enq.customer?.country || enq.country || enq.region || "Global";
+                        const machineName =
+                          enq.machine?.name || enq.machineName || "Industrial Machinery";
+                        const machineSku = enq.machine?.sku || enq.machineCode || "Configured System";
+                        const dateDisplay = enq.createdAt
+                          ? new Date(enq.createdAt).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            })
+                          : enq.timeAgo || "Recently";
 
-                      const initials = custName
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .slice(0, 2)
-                        .toUpperCase();
+                        const initials = custName
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .slice(0, 2)
+                          .toUpperCase();
 
-                      return (
-                        <tr key={enq._id || enq.id || index}>
-                          <td>
-                            <div className="customer-cell">
-                              <span className="avatar avatar-coral">{initials}</span>
-                              <span>
-                                <strong>{custName}</strong>
-                                <small>{custCompany}</small>
-                              </span>
-                            </div>
-                          </td>
-                          <td>
-                            <span className="machine-name">{machineName}</span>
-                            <small className="table-sub">{machineSku}</small>
-                          </td>
-                          <td>
-                            <span className="region-cell">{custCountry}</span>
-                          </td>
-                          <td>{getStatusBadge(enq.status)}</td>
-                          <td className="date-cell">{dateDisplay}</td>
-                          <td>
-                            <Link
-                              className="row-action"
-                              to={`/enquiry-details#${enq._id || enq.id || enq.referenceNumber}`}
-                              aria-label={`Open ${custName} enquiry`}
-                            >
-                              <i className="bi bi-arrow-up-right"></i>
-                            </Link>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                        return (
+                          <tr key={enq._id || enq.id || index}>
+                            <td>
+                              <div className="customer-cell">
+                                <span className="avatar avatar-coral">{initials}</span>
+                                <span>
+                                  <strong>{custName}</strong>
+                                  <small>{custCompany}</small>
+                                </span>
+                              </div>
+                            </td>
+                            <td>
+                              <span className="machine-name">{machineName}</span>
+                              <small className="table-sub">{machineSku}</small>
+                            </td>
+                            <td>
+                              <span className="region-cell">{custCountry}</span>
+                            </td>
+                            <td>{getStatusBadge(enq.status)}</td>
+                            <td className="date-cell">{dateDisplay}</td>
+                            <td>
+                              <Link
+                                className="row-action"
+                                to={`/enquiry-details#${enq._id || enq.id || enq.referenceNumber}`}
+                                aria-label={`Open ${custName} enquiry`}
+                              >
+                                <i className="bi bi-arrow-up-right"></i>
+                              </Link>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -290,70 +313,7 @@ const Dashboard = () => {
             </div>
           </article>
 
-          <article className="col-lg-4" id="machines">
-            <div className="panel machine-panel">
-              <div className="panel-heading machine-heading">
-                <div>
-                  <div className="panel-kicker">CONFIGURATOR</div>
-                  <h2>Featured machine</h2>
-                </div>
-                <Link
-                  className="more-button"
-                  to="/settings"
-                  aria-label="Machine settings"
-                >
-                  <i className="bi bi-three-dots"></i>
-                </Link>
-              </div>
-              <Link
-                className="machine-visual"
-                to="/machine-details"
-                aria-label="View MS-L4000 Ultra-Speed Fiber Laser Cutter"
-              >
-                <img
-                  src="https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=1200&q=80"
-                  alt="Ultra-Speed Fiber Laser Cutter"
-                />
-                <span className="visual-tag">
-                  <span></span> LIVE IN CONFIGURATOR
-                </span>
-                <span className="visual-code">MS / L4000</span>
-              </Link>
-              <div className="machine-info">
-                <div>
-                  <div className="machine-category">LASER PROCESSING</div>
-                  <h3>MS-L4000 Fiber Laser</h3>
-                </div>
-                <span className="machine-availability">
-                  <span></span> Published
-                </span>
-              </div>
-              <p className="machine-description">
-                12 kW Fiber Source with linear motor drives achieving 2.8G acceleration and 12-second pallet exchange.
-              </p>
-              <div className="machine-details">
-                <div>
-                  <span>Base price</span>
-                  <strong>$228,000</strong>
-                </div>
-                <div>
-                  <span>Available options</span>
-                  <strong>
-                    6 <small>modules</small>
-                  </strong>
-                </div>
-                <div>
-                  <span>Pipeline</span>
-                  <strong>
-                    Active <small>demand</small>
-                  </strong>
-                </div>
-              </div>
-              <Link className="machine-link" to="/machines">
-                Manage machines <i className="bi bi-arrow-right"></i>
-              </Link>
-            </div>
-          </article>
+       
         </section>
 
         <section className="row bottom-grid">
@@ -428,27 +388,38 @@ const Dashboard = () => {
               </Link>
             </div>
             <div className="activity-list">
-              <div className="activity-item">
-                <span className="activity-icon activity-coral">
-                  <i className="bi bi-person-plus"></i>
-                </span>
-                <div>
-                  <p>
-                    <strong>David Vance</strong> configured MS-L4000 Laser
-                  </p>
-                  <small>Commercial quote prepared</small>
+              {recentEnquiries.length > 0 ? (
+                <div className="activity-item">
+                  <span className="activity-icon activity-coral">
+                    <i className="bi bi-person-plus"></i>
+                  </span>
+                  <div>
+                    <p>
+                      <strong>
+                        {recentEnquiries[0].customer?.name ||
+                          recentEnquiries[0].fullName ||
+                          "Customer"}
+                      </strong>{" "}
+                      configured {recentEnquiries[0].machine?.name || recentEnquiries[0].machineName || "Machine"}
+                    </p>
+                    <small>Status: {(recentEnquiries[0].status || "new").replace("_", " ")}</small>
+                  </div>
+                  <time>Live</time>
                 </div>
-                <time>Live</time>
-              </div>
+              ) : (
+                <div className="p-3 text-center text-muted" style={{ fontSize: "12px" }}>
+                  No recent enquiry activity logged yet.
+                </div>
+              )}
               <div className="activity-item">
                 <span className="activity-icon activity-slate">
                   <i className="bi bi-gear"></i>
                 </span>
                 <div>
                   <p>
-                    <strong>{metrics.publishedMachines || 5} Machines</strong> active in catalog
+                    <strong>{metrics.publishedMachines || metrics.activeMachines || 0} Machines</strong> active in catalog
                   </p>
-                  <small>Industrial turning, milling &amp; laser</small>
+                  <small>Industrial equipment &amp; configurations</small>
                 </div>
                 <time>Live</time>
               </div>
@@ -458,9 +429,9 @@ const Dashboard = () => {
                 </span>
                 <div>
                   <p>
-                    <strong>{metrics.totalQuotes || 7} Commercial quotes</strong> issued
+                    <strong>{metrics.totalQuotes || 0} Commercial quotes</strong> issued
                   </p>
-                  <small>{metrics.acceptedQuotes || 5} accepted by clients</small>
+                  <small>{metrics.acceptedQuotes || 0} accepted by clients</small>
                 </div>
                 <time>Live</time>
               </div>

@@ -1,48 +1,30 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
+import EmptyState from "../components/EmptyState";
 import { enquiriesApi } from "../api/enquiriesApi";
 import { usersApi } from "../api/usersApi";
 
-const FALLBACK_DETAIL = {
-  _id: "6adb30b0c536b1269e97cdd7",
-  referenceNumber: "ENQ-2026-5250",
-  fullName: "david miller",
-  email: "david@yopmail.com",
-  phone: "1234567890",
-  company: "Risen technologies",
-  country: "Canada",
-  installationTimeline: "Standard (8-12 weeks)",
-  machineName: "MS-M500 5-Axis Machining Center",
-  machineCode: "MS-MC-500-5X",
-  calculatedTotal: 185000,
-  targetBudget: 185000,
-  status: "assigned",
-  assignedRep: {
-    _id: "6ad9fc22e39daefd54e568e1",
-    name: "Alexander Sterling",
-    email: "rep@machinesystems.com",
-    territory: "Europe & UK",
-  },
-  selectedOptions: [],
-  timeline: [
-    { status: "new", note: "Enquiry submitted by customer", timestamp: "2026-10-23T10:02:24.042Z" },
-    { status: "assigned", note: "Assigned to Alexander Sterling", timestamp: "2026-10-23T10:02:24.042Z" },
-  ],
-  createdAt: "2026-10-23T10:02:24.042Z",
-};
-
 const EnquiryDetails = () => {
+  const { id: paramId } = useParams();
   const location = useLocation();
-  const rawId = location.hash.replace("#", "").trim();
+  const searchParams = new URLSearchParams(location.search);
+  const rawId = (
+    paramId ||
+    (location.hash ? location.hash.replace("#", "") : "") ||
+    searchParams.get("id") ||
+    searchParams.get("enquiryId") ||
+    ""
+  ).trim();
 
-  const [enquiry, setEnquiry] = useState(FALLBACK_DETAIL);
+  const [enquiry, setEnquiry] = useState(null);
   const [representatives, setRepresentatives] = useState([]);
   const [selectedRepId, setSelectedRepId] = useState("");
+  const [adminNotes, setAdminNotes] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("assigned");
   const [statusNote, setStatusNote] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(rawId));
   const [savingAction, setSavingAction] = useState(false);
   const [actionMessage, setActionMessage] = useState({ error: "", success: "" });
 
@@ -61,23 +43,35 @@ const EnquiryDetails = () => {
         console.warn("Could not load representatives for assignment:", err.message);
       });
 
-    // If ID is available, fetch via GET /api/v1/enquiries/{id}
-    const targetId = rawId || "6adb30b0c536b1269e97cdd7";
+    if (!rawId) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    // Fetch via GET /api/v1/enquiries/{id}
     enquiriesApi
-      .getEnquiryById(targetId)
+      .getEnquiryById(rawId)
       .then((res) => {
         if (!mounted) return;
         const data = res?.data || res;
-        if (data) {
+        if (data && (data._id || data.referenceNumber || data.fullName || data.machineName)) {
           setEnquiry(data);
           setSelectedStatus(data.status || "new");
-          if (data.assignedRep?._id || data.assignedRep) {
-            setSelectedRepId(data.assignedRep._id || data.assignedRep);
+          const repId = data.assignedRep?._id || (typeof data.assignedRep === "string" ? data.assignedRep : "");
+          if (repId) {
+            setSelectedRepId(repId);
           }
+          if (data.adminNotes) {
+            setAdminNotes(data.adminNotes);
+          }
+        } else {
+          setEnquiry(null);
         }
       })
       .catch((err) => {
-        console.warn("Using offline enquiry fallback in EnquiryDetails:", err.message);
+        console.warn("Could not load enquiry details:", err.message);
+        if (mounted) setEnquiry(null);
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -89,25 +83,35 @@ const EnquiryDetails = () => {
   }, [rawId]);
 
   const handleAssignRep = async () => {
-    if (!selectedRepId) return;
+    if (!selectedRepId) {
+      setActionMessage({ error: "Please select a sales representative to assign.", success: "" });
+      return;
+    }
     setSavingAction(true);
     setActionMessage({ error: "", success: "" });
 
     try {
-      // PATCH /api/v1/enquiries/{id}/assign
-      const res = await enquiriesApi.assignEnquiry(enquiry._id, {
-        representativeId: selectedRepId,
+      const targetId = enquiry?._id || rawId;
+      // PATCH /api/v1/enquiries/{id}/assign with repId and adminNotes in body
+      const res = await enquiriesApi.assignEnquiry(targetId, {
+        repId: selectedRepId,
+        adminNotes: adminNotes.trim(),
       });
       const updated = res?.data || res;
+      const matchedRep = representatives.find((r) => r._id === selectedRepId);
+
       setEnquiry((prev) => ({
         ...prev,
-        status: updated.status || "assigned",
-        assignedRep:
-          representatives.find((r) => r._id === selectedRepId) ||
-          updated.assignedRep ||
-          prev.assignedRep,
+        status: updated?.status || "assigned",
+        adminNotes: updated?.adminNotes !== undefined ? updated.adminNotes : adminNotes.trim(),
+        assignedRep: matchedRep || updated?.assignedRep || prev?.assignedRep,
+        timeline: updated?.timeline || prev?.timeline,
       }));
-      setActionMessage({ success: "Representative successfully assigned!", error: "" });
+      setSelectedStatus(updated?.status || "assigned");
+      setActionMessage({
+        success: res?.message || "Representative successfully assigned!",
+        error: "",
+      });
     } catch (err) {
       setActionMessage({
         error: err.message || "Failed to assign representative.",
@@ -119,6 +123,7 @@ const EnquiryDetails = () => {
   };
 
   const handleUpdateStatus = async () => {
+    if (!enquiry?._id) return;
     setSavingAction(true);
     setActionMessage({ error: "", success: "" });
 
@@ -131,8 +136,8 @@ const EnquiryDetails = () => {
       const updated = res?.data || res;
       setEnquiry((prev) => ({
         ...prev,
-        status: updated.status || selectedStatus,
-        timeline: updated.timeline || prev.timeline,
+        status: updated?.status || selectedStatus,
+        timeline: updated?.timeline || prev?.timeline,
       }));
       setActionMessage({ success: "Workflow status updated successfully!", error: "" });
       setStatusNote("");
@@ -146,14 +151,6 @@ const EnquiryDetails = () => {
     }
   };
 
-  const breadcrumb = (
-    <>
-      <Link to="/enquiries">Enquiries</Link>
-      <i className="bi bi-chevron-right"></i>
-      <strong>{enquiry.referenceNumber || "Enquiry details"}</strong>
-    </>
-  );
-
   const formatPrice = (val) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -161,6 +158,66 @@ const EnquiryDetails = () => {
       maximumFractionDigits: 0,
     }).format(val || 0);
   };
+
+  if (loading) {
+    return (
+      <AdminLayout
+        breadcrumb={
+          <>
+            <Link to="/enquiries">Enquiries</Link>
+            <i className="bi bi-chevron-right"></i>
+            <span>Loading...</span>
+          </>
+        }
+        bodyClass="detail-shell-page"
+      >
+        <div className="page-wrap p-5 text-center">
+          <div className="spinner-border text-secondary mb-3" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="text-muted">Loading enquiry details...</p>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (!enquiry) {
+    return (
+      <AdminLayout
+        breadcrumb={
+          <>
+            <Link to="/enquiries">Enquiries</Link>
+            <i className="bi bi-chevron-right"></i>
+            <span>Data is not found</span>
+          </>
+        }
+        bodyClass="detail-shell-page"
+      >
+        <div className="page-wrap">
+          <EmptyState
+            icon="bi-inbox"
+            title="Data is not found"
+            message={
+              rawId
+                ? `Enquiry record "${rawId}" was not found or is currently unavailable.`
+                : "No enquiry identifier was provided in the URL."
+            }
+            actionText="Back to all enquiries"
+            actionLink="/enquiries"
+          />
+          <Footer />
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  const breadcrumb = (
+    <>
+      <Link to="/enquiries">Enquiries</Link>
+      <i className="bi bi-chevron-right"></i>
+      <strong>{enquiry.referenceNumber || "Enquiry details"}</strong>
+    </>
+  );
 
   const customerName =
     enquiry.fullName ||
@@ -174,6 +231,13 @@ const EnquiryDetails = () => {
   const machineCode = enquiry.machineCode || enquiry.machine?.sku || "Custom Machine";
   const totalAmount = enquiry.calculatedTotal || enquiry.targetBudget || 0;
   const optionsList = Array.isArray(enquiry.selectedOptions) ? enquiry.selectedOptions : [];
+
+  const assignedRepName =
+    enquiry.assignedRep?.name ||
+    `${enquiry.assignedRep?.firstName || ""} ${enquiry.assignedRep?.lastName || ""}`.trim() ||
+    (typeof enquiry.assignedRep === "string"
+      ? representatives.find((r) => r._id === enquiry.assignedRep)?.name || "Assigned"
+      : "Unassigned");
 
   return (
     <AdminLayout breadcrumb={breadcrumb} bodyClass="detail-shell-page">
@@ -254,6 +318,32 @@ const EnquiryDetails = () => {
                   <dt>Installation timeline</dt>
                   <dd>{enquiry.installationTimeline || enquiry.deliveryTimeline || "Standard"}</dd>
                 </div>
+                <div>
+                  <dt>Assigned representative</dt>
+                  <dd style={{ fontWeight: 600, color: enquiry.assignedRep ? "inherit" : "var(--accent)" }}>
+                    {assignedRepName}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Workflow status</dt>
+                  <dd style={{ textTransform: "capitalize" }}>
+                    {(enquiry.status || "new").replace("_", " ")}
+                  </dd>
+                </div>
+                {enquiry.adminNotes && (
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <dt>Admin Notes</dt>
+                    <dd style={{ color: "var(--accent, #27624c)", fontWeight: 500 }}>
+                      {enquiry.adminNotes}
+                    </dd>
+                  </div>
+                )}
+                {enquiry.customerNotes && (
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <dt>Customer Notes</dt>
+                    <dd>{enquiry.customerNotes}</dd>
+                  </div>
+                )}
               </dl>
 
               {/* Selected Options */}
@@ -336,10 +426,24 @@ const EnquiryDetails = () => {
                   <option value="">Select representative...</option>
                   {representatives.map((rep) => (
                     <option key={rep._id} value={rep._id}>
-                      {rep.name} ({rep.territory || rep.region || "Global"})
+                      {rep.name || `${rep.firstName || ""} ${rep.lastName || ""}`.trim() || rep.email} ({rep.territory || rep.region || "Global"})
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label" style={{ fontSize: "12px", fontWeight: "600" }}>
+                  Admin Notes / Directives (Optional)
+                </label>
+                <textarea
+                  className="form-control"
+                  rows={2}
+                  placeholder="e.g. Assigned for French territory consultation."
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                  style={{ fontSize: "13px" }}
+                />
               </div>
 
               <button

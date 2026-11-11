@@ -12,10 +12,15 @@ export const enquiriesApi = {
   },
 
   // PATCH /api/v1/enquiries/{id}/assign (Admin assign enquiry to a representative)
-  assignEnquiry: (id, { representativeId }) => {
-    return axiosInstance.patch(`/api/v1/enquiries/${id}/assign`, {
-      representativeId,
-    });
+  assignEnquiry: (id, { repId, representativeId, adminNotes } = {}) => {
+    const finalRepId = repId || representativeId;
+    const payload = {
+      repId: finalRepId,
+    };
+    if (adminNotes !== undefined) {
+      payload.adminNotes = adminNotes;
+    }
+    return axiosInstance.patch(`/api/v1/enquiries/${id}/assign`, payload);
   },
 
   // PATCH /api/v1/enquiries/{id}/status (Update enquiry workflow status)

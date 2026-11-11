@@ -17,9 +17,6 @@ import Machines from "./pages/Machines";
 import AddMachine from "./pages/AddMachine";
 import Categories from "./pages/Categories";
 import MachineDetails from "./pages/MachineDetails";
-import Cr80Details from "./pages/Cr80Details";
-import Mx220Details from "./pages/Mx220Details";
-import Pl600Details from "./pages/Pl600Details";
 import Options from "./pages/Options";
 import AddOption from "./pages/AddOption";
 import Pricing from "./pages/Pricing";
@@ -61,7 +58,7 @@ function App() {
           </Route>
           <Route path="/index" element={<Navigate to="/login" replace />} />
 
-          {/* Protected Routes (require dummy auth in localStorage or real API session) */}
+          {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
             {/* Workspace */}
             <Route path="/dashboard" element={<Dashboard />} />
@@ -73,9 +70,10 @@ function App() {
             <Route path="/add-category" element={<Navigate to="/categories" replace />} />
             <Route path="/edit-category/:id" element={<Navigate to="/categories" replace />} />
             <Route path="/machine-details" element={<MachineDetails />} />
-            <Route path="/cr80-details" element={<Cr80Details />} />
-            <Route path="/mx220-details" element={<Mx220Details />} />
-            <Route path="/pl600-details" element={<Pl600Details />} />
+            <Route path="/machine-details/:id" element={<MachineDetails />} />
+            <Route path="/cr80-details" element={<Navigate to="/machines" replace />} />
+            <Route path="/mx220-details" element={<Navigate to="/machines" replace />} />
+            <Route path="/pl600-details" element={<Navigate to="/machines" replace />} />
 
             {/* Options & Rules */}
             <Route path="/options" element={<Options />} />
@@ -92,10 +90,12 @@ function App() {
             {/* Enquiries */}
             <Route path="/enquiries" element={<Enquiries />} />
             <Route path="/enquiry-details" element={<EnquiryDetails />} />
+            <Route path="/enquiry-details/:id" element={<EnquiryDetails />} />
 
             {/* Quotes */}
             <Route path="/quotes" element={<Quotes />} />
             <Route path="/quote-details" element={<QuoteDetails />} />
+            <Route path="/quote-details/:id" element={<QuoteDetails />} />
 
             {/* Representatives */}
             <Route path="/representatives" element={<Representatives />} />

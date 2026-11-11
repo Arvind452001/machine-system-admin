@@ -917,6 +917,23 @@ body:has(.side-link.active[href="/representatives"]) .summary-item:nth-child(3):
   }
 }
 
+.stat-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid rgba(201, 79, 45, 0.2);
+  border-top-color: var(--accent, #c94f2d);
+  border-radius: 50%;
+  animation: authSpin 0.7s linear infinite;
+  vertical-align: middle;
+}
+
+.stat-spinner-sm {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+}
+
 @keyframes fadeInDown {
   from {
     opacity: 0;

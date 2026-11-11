@@ -4,24 +4,10 @@ import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
 import { usersApi } from "../api/usersApi";
 import Pagination from "../components/Pagination";
-
-const FALLBACK_REPS = [
-  {
-    _id: "6ad9fc22e39daefd54e568e1",
-    name: "Alexander Sterling",
-    email: "rep@machinesystems.com",
-    role: "representative",
-    company: "MACHINE Systems Sales UK & Europe",
-    territory: "Europe & UK",
-    region: "Europe & UK",
-    isApproved: true,
-    approvalStatus: "approved",
-    openEnquiries: 9,
-  },
-];
+import StatSpinner from "../components/StatSpinner";
 
 const Representatives = () => {
-  const [representatives, setRepresentatives] = useState(FALLBACK_REPS);
+  const [representatives, setRepresentatives] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [viewTab, setViewTab] = useState("reps"); // 'reps' or 'allUsers'
   const [loading, setLoading] = useState(true);
@@ -37,12 +23,11 @@ const Representatives = () => {
       .getRepresentatives()
       .then((res) => {
         const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        if (list.length > 0) {
-          setRepresentatives(list);
-        }
+        setRepresentatives(list);
       })
       .catch((err) => {
-        console.warn("Using offline representatives fallback:", err.message);
+        console.warn("Could not load representatives from API:", err.message);
+        setRepresentatives([]);
       });
 
     // 2. GET /api/v1/users
@@ -54,6 +39,7 @@ const Representatives = () => {
       })
       .catch((err) => {
         console.warn("Could not load all users:", err.message);
+        setAllUsers([]);
       })
       .finally(() => {
         setLoading(false);
@@ -131,20 +117,24 @@ const Representatives = () => {
         <section className="summary-strip">
           <div className="summary-item">
             <span>Sales representatives</span>
-            <strong>{representatives.length}</strong>
-            <small>Active field team</small>
+            <strong>{loading ? <StatSpinner /> : representatives.length}</strong>
+            <small>{loading ? "Loading..." : "Active field team"}</small>
           </div>
           <div className="summary-item">
             <span>Total registered users</span>
-            <strong>{allUsers.length || 8}</strong>
-            <small>Customers &amp; staff</small>
+            <strong>{loading ? <StatSpinner /> : allUsers.length}</strong>
+            <small>{loading ? "Loading..." : "Customers & staff"}</small>
           </div>
           <div className="summary-item" onClick={() => setViewTab("allUsers")} style={{ cursor: "pointer", border: "1px solid #fde68a", background: "#fffbeb" }} title="Click to review pending approvals">
             <span style={{ color: "#b45309", fontWeight: "600" }}><i className="bi bi-clock-history me-1"></i> Pending approvals</span>
             <strong>
-              {allUsers.filter((u) => u.role === "representative" && (u.approvalStatus === "pending" || u.isApproved === false)).length}
+              {loading ? (
+                <StatSpinner color="#b45309" />
+              ) : (
+                allUsers.filter((u) => u.role === "representative" && (u.approvalStatus === "pending" || u.isApproved === false)).length
+              )}
             </strong>
-            <small>Requires Admin review</small>
+            <small>{loading ? "Loading..." : "Requires Admin review"}</small>
           </div>
         </section>
 
@@ -154,13 +144,15 @@ const Representatives = () => {
             className={`btn btn-sm ${viewTab === "reps" ? "btn-accent" : "btn-outline"}`}
             onClick={() => setViewTab("reps")}
           >
-            <i className="bi bi-geo-alt me-1"></i> Sales Representatives ({representatives.length})
+            <i className="bi bi-geo-alt me-1"></i> Sales Representatives (
+            {loading ? <StatSpinner size="12px" /> : representatives.length})
           </button>
           <button
             className={`btn btn-sm ${viewTab === "allUsers" ? "btn-accent" : "btn-outline"}`}
             onClick={() => setViewTab("allUsers")}
           >
-            <i className="bi bi-people me-1"></i> All Users &amp; Approvals ({allUsers.length})
+            <i className="bi bi-people me-1"></i> All Users &amp; Approvals (
+            {loading ? <StatSpinner size="12px" /> : allUsers.length})
           </button>
         </div>
 
@@ -178,60 +170,86 @@ const Representatives = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {representatives
-                    .slice((repPage - 1) * PAGE_SIZE, repPage * PAGE_SIZE)
-                    .map((rep) => {
-                    const initials = (rep.name || "Rep")
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .slice(0, 2)
-                      .toUpperCase();
+                  {loading ? (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: "center", padding: "36px 16px", color: "var(--text-muted, #85867f)" }}>
+                        <i className="bi bi-arrow-repeat me-2" style={{ display: "inline-block", animation: "spin 1s linear infinite" }}></i>
+                        Loading sales representatives...
+                      </td>
+                    </tr>
+                  ) : representatives.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: "center", padding: "48px 16px" }}>
+                        <div style={{ maxWidth: "360px", margin: "0 auto", textAlign: "center" }}>
+                          <i className="bi bi-person-badge" style={{ fontSize: "32px", color: "#c5c6bf", display: "block", marginBottom: "12px" }}></i>
+                          <strong style={{ display: "block", marginBottom: "6px", fontSize: "15px" }}>
+                            Data is not found
+                          </strong>
+                          <p style={{ color: "#85867f", fontSize: "12px", marginBottom: "16px" }}>
+                            No sales representatives currently registered in the database.
+                          </p>
+                          <Link to="/invite-representative" className="btn btn-accent btn-sm">
+                            <i className="bi bi-plus-lg me-1"></i> Invite representative
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    representatives
+                      .slice((repPage - 1) * PAGE_SIZE, repPage * PAGE_SIZE)
+                      .map((rep) => {
+                      const initials = (rep.name || "Rep")
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .slice(0, 2)
+                        .toUpperCase();
 
-                    return (
-                      <tr key={rep._id || rep.email}>
-                        <td>
-                          <div className="d-flex align-items-center gap-2">
-                            <span className="avatar avatar-coral">{initials}</span>
-                            <div>
-                              <strong>{rep.name}</strong>
-                              <span className="cell-sub">{rep.company || "Direct Representative"}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <span>{rep.email}</span>
-                          <span className="cell-sub">{rep.phone || "No phone registered"}</span>
-                        </td>
-                        <td>
-                          <strong>{rep.territory || rep.region || "Global"}</strong>
-                        </td>
-                        <td>
-                          <span>{rep.openEnquiries || 0} open enquiries</span>
-                        </td>
-                        <td>
-                          {rep.isApproved === false || rep.approvalStatus === "pending" ? (
+                      return (
+                        <tr key={rep._id || rep.email}>
+                          <td>
                             <div className="d-flex align-items-center gap-2">
-                              <span className="table-status" style={{ background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }}>
-                                Pending
-                              </span>
-                              <button
-                                type="button"
-                                className="btn btn-sm text-success"
-                                onClick={() => handleApprove(rep._id, rep.name || rep.email)}
-                                title="Approve representative"
-                                style={{ padding: "4px 10px", fontSize: "12px", border: "1px solid #16a34a", color: "#16a34a", background: "#f0fdf4", borderRadius: "4px", fontWeight: "600", cursor: "pointer" }}
-                              >
-                                <i className="bi bi-check-lg"></i> Approve
-                              </button>
+                              <span className="avatar avatar-coral">{initials}</span>
+                              <div>
+                                <strong>{rep.name}</strong>
+                                <span className="cell-sub">{rep.company || "Direct Representative"}</span>
+                              </div>
                             </div>
-                          ) : (
-                            <span className="table-status">Approved</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          </td>
+                          <td>
+                            <span>{rep.email}</span>
+                            <span className="cell-sub">{rep.phone || "No phone registered"}</span>
+                          </td>
+                          <td>
+                            <strong>{rep.territory || rep.region || "Global"}</strong>
+                          </td>
+                          <td>
+                            <span>{rep.openEnquiries || 0} open enquiries</span>
+                          </td>
+                          <td>
+                            {rep.isApproved === false || rep.approvalStatus === "pending" ? (
+                              <div className="d-flex align-items-center gap-2">
+                                <span className="table-status" style={{ background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }}>
+                                  Pending
+                                </span>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm text-success"
+                                  onClick={() => handleApprove(rep._id, rep.name || rep.email)}
+                                  title="Approve representative"
+                                  style={{ padding: "4px 10px", fontSize: "12px", border: "1px solid #16a34a", color: "#16a34a", background: "#f0fdf4", borderRadius: "4px", fontWeight: "600", cursor: "pointer" }}
+                                >
+                                  <i className="bi bi-check-lg"></i> Approve
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="table-status">Approved</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -251,9 +269,31 @@ const Representatives = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {allUsers
-                    .slice((userPage - 1) * PAGE_SIZE, userPage * PAGE_SIZE)
-                    .map((u) => {
+                  {loading ? (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: "center", padding: "36px 16px", color: "var(--text-muted, #85867f)" }}>
+                        <i className="bi bi-arrow-repeat me-2" style={{ display: "inline-block", animation: "spin 1s linear infinite" }}></i>
+                        Loading all users...
+                      </td>
+                    </tr>
+                  ) : allUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: "center", padding: "48px 16px" }}>
+                        <div style={{ maxWidth: "360px", margin: "0 auto", textAlign: "center" }}>
+                          <i className="bi bi-people" style={{ fontSize: "32px", color: "#c5c6bf", display: "block", marginBottom: "12px" }}></i>
+                          <strong style={{ display: "block", marginBottom: "6px", fontSize: "15px" }}>
+                            Data is not found
+                          </strong>
+                          <p style={{ color: "#85867f", fontSize: "12px", marginBottom: "0" }}>
+                            No registered users found in the system.
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    allUsers
+                      .slice((userPage - 1) * PAGE_SIZE, userPage * PAGE_SIZE)
+                      .map((u) => {
                     const isRep = u.role === "representative";
                     const isPendingRep = isRep && (u.isApproved === false || u.approvalStatus === "pending");
                     const isRejectedRep = isRep && u.approvalStatus === "rejected";
@@ -340,7 +380,7 @@ const Representatives = () => {
                         </td>
                       </tr>
                     );
-                  })}
+                  }))}
                 </tbody>
               </table>
             </div>

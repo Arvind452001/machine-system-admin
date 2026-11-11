@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { DUMMY_CREDENTIALS } from "../services/authService";
 
 const SignIn = () => {
   const navigate = useNavigate();
@@ -14,13 +13,6 @@ const SignIn = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Quick helper for easy demo testing
-  const handleUseDemo = (demoAccount) => {
-    setEmail(demoAccount.email);
-    setPassword(demoAccount.password);
-    setError("");
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();

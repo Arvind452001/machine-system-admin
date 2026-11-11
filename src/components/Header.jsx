@@ -11,9 +11,19 @@ const Header = ({ onToggleSidebar, isSidebarOpen, breadcrumb }) => {
     navigate("/login");
   };
 
-  const initials = user?.initials || (user?.name ? user.name.split(" ").map(n => n[0]).join("") : "JM");
-  const displayName = user?.name || "Jordan Miller";
-  const displayRole = user?.role || "Administrator";
+  const initials =
+    user?.initials ||
+    (user?.name
+      ? user.name
+          .split(" ")
+          .filter(Boolean)
+          .map((n) => n[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase()
+      : "AD");
+  const displayName = user?.name || "Administrator";
+  const displayRole = user?.role || "System Admin";
 
   return (
     <header className="topbar">

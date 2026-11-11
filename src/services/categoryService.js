@@ -10,84 +10,8 @@ import { categoriesApi } from "../api/categoriesApi";
 
 const STORAGE_KEY = "machine_system_categories";
 
-// Initial default categories matching the catalog
-export const INITIAL_CATEGORIES = [
-  {
-    id: "cat-1",
-    _id: "cat-1",
-    name: "Hydraulic forming",
-    code: "HYD-01",
-    slug: "hydraulic-forming",
-    icon: "bi-gear-wide-connected",
-    description: "High-tonnage stamping, forging, and heavy hydraulic compression systems.",
-    status: "Active",
-    displayOrder: 1,
-    order: 1,
-    machineCount: 3,
-    createdAt: "2026-01-15T08:00:00.000Z",
-    updatedAt: "2026-03-10T10:30:00.000Z",
-  },
-  {
-    id: "cat-2",
-    _id: "cat-2",
-    name: "Precision cutting",
-    code: "CUT-02",
-    slug: "precision-cutting",
-    icon: "bi-cpu",
-    description: "Ultra-high-speed laser, plasma, and precision abrasive cutting units.",
-    status: "Active",
-    displayOrder: 2,
-    order: 2,
-    machineCount: 4,
-    createdAt: "2026-01-16T09:15:00.000Z",
-    updatedAt: "2026-03-12T14:20:00.000Z",
-  },
-  {
-    id: "cat-3",
-    _id: "cat-3",
-    name: "Industrial mixing",
-    code: "MIX-03",
-    slug: "industrial-mixing",
-    icon: "bi-arrow-repeat",
-    description: "Continuous batch fluid, powder, and compound industrial mixing machinery.",
-    status: "Active",
-    displayOrder: 3,
-    order: 3,
-    machineCount: 2,
-    createdAt: "2026-01-18T11:00:00.000Z",
-    updatedAt: "2026-02-28T09:45:00.000Z",
-  },
-  {
-    id: "cat-4",
-    _id: "cat-4",
-    name: "Material handling",
-    code: "MAT-04",
-    slug: "material-handling",
-    icon: "bi-box-seam",
-    description: "Automated loaders, gantry systems, palletizers, and conveyor handling units.",
-    status: "Active",
-    displayOrder: 4,
-    order: 4,
-    machineCount: 3,
-    createdAt: "2026-01-20T13:30:00.000Z",
-    updatedAt: "2026-03-01T16:10:00.000Z",
-  },
-  {
-    id: "cat-5",
-    _id: "cat-5",
-    name: "Additive & tooling",
-    code: "ADD-05",
-    slug: "additive-tooling",
-    icon: "bi-tools",
-    description: "Industrial 3D metal sintering, custom tooling, and additive manufacturing cells.",
-    status: "Draft",
-    displayOrder: 5,
-    order: 5,
-    machineCount: 0,
-    createdAt: "2026-02-05T10:00:00.000Z",
-    updatedAt: "2026-02-05T10:00:00.000Z",
-  },
-];
+// Initial default categories
+export const INITIAL_CATEGORIES = [];
 
 const slugify = (text) => {
   return (text || "")
@@ -107,27 +31,23 @@ const notifySubscribers = () => {
 
 export const categoryService = {
   /**
-   * Get all categories from localStorage or initialize with defaults.
-   * Synchronizes with backend GET /api/v1/categories.
+   * Get all categories from backend GET /api/v1/categories.
+   * Caches in localStorage for smooth navigation.
    */
   getCategories: async (options = {}) => {
     const { search = "", status = "All statuses" } = options;
 
-    // Check localStorage cache first
     let categories = [];
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         categories = JSON.parse(stored);
-      } else {
-        categories = [...INITIAL_CATEGORIES];
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(categories));
       }
     } catch {
-      categories = [...INITIAL_CATEGORIES];
+      categories = [];
     }
 
-    // Fetch and sync from live backend endpoint GET /api/v1/categories
+    // Fetch from live backend endpoint GET /api/v1/categories
     try {
       const res = await categoriesApi.getCategories();
       const apiItems = Array.isArray(res?.data)
@@ -139,7 +59,7 @@ export const categoryService = {
         : [];
 
       if (apiItems.length > 0) {
-        const merged = apiItems.map((item, idx) => {
+        const mapped = apiItems.map((item, idx) => {
           const rawName = typeof item === "string" ? item : item.name;
           const itemId = item._id || item.id || `cat-${idx + 1}`;
           const existing = categories.find(
@@ -171,11 +91,11 @@ export const categoryService = {
           };
         });
 
-        categories = merged;
+        categories = mapped;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(categories));
       }
     } catch (err) {
-      console.warn("Could not sync categories from backend API, using cached data:", err.message);
+      console.warn("Could not sync categories from backend API:", err.message);
     }
 
     // Filter categories
@@ -199,13 +119,9 @@ export const categoryService = {
   getCategoriesSync: () => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_CATEGORIES));
-      return [...INITIAL_CATEGORIES];
+      return stored ? JSON.parse(stored) : [];
     } catch {
-      return [...INITIAL_CATEGORIES];
+      return [];
     }
   },
 
@@ -410,14 +326,5 @@ export const categoryService = {
     notifySubscribers();
 
     return toDelete;
-  },
-
-  /**
-   * Reset to initial defaults (utility helper)
-   */
-  resetDefaults: () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_CATEGORIES));
-    notifySubscribers();
-    return [...INITIAL_CATEGORIES];
   },
 };

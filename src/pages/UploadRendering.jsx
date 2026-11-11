@@ -1,16 +1,40 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
+import { machinesApi } from "../api/machinesApi";
 
 const UploadRendering = () => {
   const navigate = useNavigate();
+  const [machines, setMachines] = useState([]);
+  const [loadingMachines, setLoadingMachines] = useState(true);
   const [formData, setFormData] = useState({
     machine: "",
     view: "",
     alt: "",
     status: "In review",
   });
+
+  useEffect(() => {
+    let mounted = true;
+    machinesApi
+      .getMachines()
+      .then((res) => {
+        if (!mounted) return;
+        const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        setMachines(list);
+      })
+      .catch((err) => {
+        console.warn("Could not load machines for rendering upload:", err.message);
+      })
+      .finally(() => {
+        if (mounted) setLoadingMachines(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -70,11 +94,18 @@ const UploadRendering = () => {
                   value={formData.machine}
                   onChange={handleChange}
                 >
-                  <option value="">Select machine</option>
-                  <option>FX-420 Press</option>
-                  <option>CR-80 Cutter</option>
-                  <option>MX-220 Mixer</option>
-                  <option>PL-600 Loader</option>
+                  <option value="">
+                    {loadingMachines ? "Loading machines..." : "Select machine"}
+                  </option>
+                  {machines.map((m) => {
+                    const id = m._id || m.id;
+                    const name = m.name || m.model || "Machine";
+                    return (
+                      <option key={id} value={name}>
+                        {name} {m.model ? `(${m.model})` : ""}
+                      </option>
+                    );
+                  })}
                 </select>
               </label>
               <label className="form-field">
