@@ -34,6 +34,7 @@ import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import LegalContent from "./pages/LegalContent";
 import Reviews from "./pages/Reviews";
+import TiltRotatorAdmin from "./pages/TiltRotatorAdmin";
 import NotFound from "./pages/NotFound";
 
 /**
@@ -106,6 +107,7 @@ function App() {
             {/* Activity & Settings */}
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/reviews" element={<Reviews />} />
+            <Route path="/tilt-rotator" element={<TiltRotatorAdmin />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/legal-content" element={<LegalContent />} />

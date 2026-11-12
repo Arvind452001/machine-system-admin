@@ -237,17 +237,15 @@ const Sidebar = ({ isOpen, onClose }) => {
           <span>Customer Reviews</span>
           {reviewCount > 0 && <span className="nav-count">{reviewCount}</span>}
         </NavLink>
-        <a
-          className="side-link"
-          href="http://localhost:5173/tilt-rotator"
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Open interactive Tilt-Rotator Configurator preview"
+        <NavLink
+          className={`side-link ${location.pathname === "/tilt-rotator" ? "active" : ""}`}
+          to="/tilt-rotator"
+          onClick={onClose}
         >
           <i className="bi bi-gear-wide-connected text-primary"></i>
-          <span>Tilt-Rotator 3D</span>
-          <span style={{ marginLeft: "auto", fontSize: "10px", padding: "2px 6px", background: "#e8f0fe", color: "#1967d2", borderRadius: "4px", fontWeight: 700 }}>PREVIEW</span>
-        </a>
+          <span>Tilt-Rotator CMS</span>
+          <span style={{ marginLeft: "auto", fontSize: "10px", padding: "2px 6px", background: "#def7ec", color: "#03543f", borderRadius: "4px", fontWeight: 700 }}>CONFIG</span>
+        </NavLink>
       </nav>
 
       <div className="sidebar-section-label section-gap">SALES</div>
