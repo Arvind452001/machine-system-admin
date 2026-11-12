@@ -242,9 +242,9 @@ const Sidebar = ({ isOpen, onClose }) => {
           to="/tilt-rotator"
           onClick={onClose}
         >
-          <i className="bi bi-gear-wide-connected text-primary"></i>
-          <span>Tilt-Rotator CMS</span>
-          <span style={{ marginLeft: "auto", fontSize: "10px", padding: "2px 6px", background: "#def7ec", color: "#03543f", borderRadius: "4px", fontWeight: 700 }}>CONFIG</span>
+          <i className="bi bi-gear-wide-connected"></i>
+          <span>Tilt-Rotator 3D</span>
+          <span className="nav-count">3D</span>
         </NavLink>
       </nav>
 

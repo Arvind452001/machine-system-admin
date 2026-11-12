@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
 import defaultTiltData from "../data/tiltRotatorData.json";
@@ -19,13 +19,11 @@ const TiltRotatorAdmin = () => {
 
   const [activeModelIdx, setActiveModelIdx] = useState(0);
   const [statusMsg, setStatusMsg] = useState("");
-  const [comboStepIdx, setComboStepIdx] = useState(0);
-  const [comboSelections, setComboSelections] = useState({});
-  const [comboPreview, setComboPreview] = useState("");
+  const [activeTab, setActiveTab] = useState("steps"); // "steps" | "renders"
 
   const flash = (msg) => {
     setStatusMsg(msg);
-    setTimeout(() => setStatusMsg(""), 2500);
+    setTimeout(() => setStatusMsg(""), 3000);
   };
 
   const saveConfig = (newConfig) => {
@@ -45,6 +43,20 @@ const TiltRotatorAdmin = () => {
     return config.models[activeModelIdx] || config.models[0];
   }, [config, activeModelIdx]);
 
+  // Statistics
+  const stats = useMemo(() => {
+    const totalModels = config?.models?.length || 0;
+    const totalSteps = activeModel?.steps?.length || 0;
+    let totalOptions = 0;
+    if (activeModel?.steps) {
+      activeModel.steps.forEach((s) => {
+        totalOptions += s.options?.length || 0;
+      });
+    }
+    const totalRenders = Object.keys(config?.combinationImages || {}).length;
+    return { totalModels, totalSteps, totalOptions, totalRenders };
+  }, [config, activeModel]);
+
   // Model Operations
   const handleUpdateModel = (field, val) => {
     const updatedModels = [...config.models];
@@ -59,15 +71,15 @@ const TiltRotatorAdmin = () => {
     const newId = `model_${Date.now()}`;
     const newModel = {
       id: newId,
-      name: "New Model",
-      description: "Excavator attachment platform",
+      name: "VRX New Model",
+      description: "For excavator class 6-10 ton",
       image: "",
       steps: [
         {
-          id: "step1",
+          id: "step_hose",
           name: "1. Hose system",
           options: [
-            { id: "opt1", name: "Standard Hoses", price: 0, description: "Standard hydraulic routing" }
+            { id: "opt_h2", name: "2-Hose System", price: 0, description: "Direct dual-line hydraulics" }
           ]
         }
       ]
@@ -89,9 +101,9 @@ const TiltRotatorAdmin = () => {
     const stepNum = (activeModel.steps?.length || 0) + 1;
     const newStep = {
       id: `step_${Date.now()}`,
-      name: `${stepNum}. New Step`,
+      name: `${stepNum}. New Module Stage`,
       options: [
-        { id: `opt_${Date.now()}`, name: "Default Option", price: 0, description: "" }
+        { id: `opt_${Date.now()}`, name: "Standard Specification", price: 0, description: "" }
       ]
     };
     const updatedModels = [...config.models];
@@ -122,7 +134,7 @@ const TiltRotatorAdmin = () => {
   const handleAddOption = (stepIdx) => {
     const newOpt = {
       id: `opt_${Date.now()}`,
-      name: "New Option",
+      name: "New Modular Option",
       price: 0,
       description: "",
       partImage: "",
@@ -200,7 +212,7 @@ const TiltRotatorAdmin = () => {
     dlAnchor.setAttribute("href", dataStr);
     dlAnchor.setAttribute("download", `tilt_rotator_catalog_${Date.now()}.json`);
     dlAnchor.click();
-    flash("Exported JSON file!");
+    flash("Exported JSON file successfully!");
   };
 
   const handleImport = (e) => {
@@ -212,9 +224,9 @@ const TiltRotatorAdmin = () => {
         const imported = JSON.parse(ev.target.result);
         if (imported?.models && Array.isArray(imported.models)) {
           saveConfig(imported);
-          flash("Catalog imported and applied successfully!");
+          flash("Catalog JSON imported successfully!");
         } else {
-          alert("Invalid catalog JSON format.");
+          alert("Invalid catalog JSON format: 'models' array is required.");
         }
       } catch (err) {
         alert("Failed to parse JSON file: " + err.message);
@@ -229,412 +241,722 @@ const TiltRotatorAdmin = () => {
     flash("Reset to factory demo data!");
   };
 
+  const breadcrumb = (
+    <>
+      <span>Workspace</span>
+      <i className="bi bi-chevron-right"></i>
+      <strong>Tilt-Rotator CMS</strong>
+    </>
+  );
+
   return (
-    <AdminLayout>
-      <div className="page-header" style={{ marginBottom: "20px" }}>
-        <div>
-          <div className="eyebrow">
-            <span></span> DYNAMIC 3D CONFIGURATOR CMS
+    <AdminLayout breadcrumb={breadcrumb} title="Tilt-Rotator Catalog">
+      <div className="page-wrap">
+        {/* Content Header matching MACHINE Systems Design */}
+        <section className="content-header">
+          <div>
+            <div className="eyebrow">
+              <span className="eyebrow-line"></span>3D CONFIGURATOR CMS
+            </div>
+            <h1>
+              Tilt-Rotator <span>Catalog &amp; Rules</span>
+            </h1>
+            <p className="welcome-subtitle">
+              Manage multi-stage excavator attachment models, modular options, EUR pricing rules, and live 3D assembly renders.
+            </p>
           </div>
-          <h1>Tilt-Rotator Product Catalog</h1>
-          <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "13px" }}>
-            Add models, customize multi-step options, assign prices and compatibility rules dynamically without code changes.
-          </p>
-        </div>
 
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
-          {statusMsg && (
-            <span style={{ fontSize: "12px", fontWeight: "600", color: "#065f46", background: "#e8fdf2", padding: "4px 10px", borderRadius: "4px", border: "1px solid #a7f3d0" }}>
-              <i className="bi bi-check2-circle" style={{ marginRight: "4px" }}></i>{statusMsg}
-            </span>
-          )}
+          <div className="header-actions">
+            <a
+              href="http://localhost:5173/tilt-rotator"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-accent"
+              title="Open public configurator preview"
+            >
+              <i className="bi bi-box-arrow-up-right"></i> Live Customer Preview
+            </a>
 
-          <a
-            href="http://localhost:5173/tilt-rotator"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="button button-outline"
-            style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px" }}
-          >
-            <i className="bi bi-box-arrow-up-right"></i> Live Customer Preview
-          </a>
+            <button
+              type="button"
+              className="btn-subtle"
+              onClick={handleExport}
+              title="Download backup JSON"
+            >
+              <i className="bi bi-download"></i> Export JSON
+            </button>
 
-          <button
-            type="button"
-            className="button button-outline"
-            onClick={handleExport}
-            style={{ fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "6px" }}
-          >
-            <i className="bi bi-download"></i> Export JSON
-          </button>
+            <label
+              className="btn-subtle"
+              style={{ cursor: "pointer", margin: 0 }}
+              title="Import JSON catalog"
+            >
+              <i className="bi bi-upload"></i> Import JSON
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".json"
+                style={{ display: "none" }}
+                onChange={handleImport}
+              />
+            </label>
 
-          <label
-            className="button button-outline"
-            style={{ fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "6px", cursor: "pointer", margin: 0 }}
-          >
-            <i className="bi bi-upload"></i> Import JSON
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept=".json"
-              style={{ display: "none" }}
-              onChange={handleImport}
-            />
-          </label>
+            <button
+              type="button"
+              className="btn-subtle"
+              onClick={handleResetDefaults}
+              style={{ color: "#c94f2d" }}
+              title="Restore demo dataset"
+            >
+              <i className="bi bi-arrow-counterclockwise"></i> Reset Demo
+            </button>
+          </div>
+        </section>
 
-          <button
-            type="button"
-            className="button button-outline"
-            onClick={handleResetDefaults}
-            style={{ fontSize: "12px", color: "#991b1b" }}
-          >
-            Reset Defaults
-          </button>
-        </div>
-      </div>
-
-      {/* Model Selector Tabs */}
-      <div style={{ display: "flex", gap: "8px", borderBottom: "1px solid #e2e8f0", paddingBottom: "10px", marginBottom: "20px", overflowX: "auto" }}>
-        {config.models?.map((m, idx) => (
-          <button
-            key={m.id || idx}
-            type="button"
-            onClick={() => setActiveModelIdx(idx)}
+        {/* Status Toast Banner */}
+        {statusMsg && (
+          <div
             style={{
-              padding: "8px 16px",
+              background: "#edf7f2",
+              border: "1px solid #b7e4ce",
+              color: "#1c563e",
+              padding: "10px 16px",
               borderRadius: "6px",
-              border: "1px solid",
-              borderColor: idx === activeModelIdx ? "#173f35" : "#cbd5e1",
-              background: idx === activeModelIdx ? "#173f35" : "#ffffff",
-              color: idx === activeModelIdx ? "#ffffff" : "#334155",
-              fontWeight: 600,
-              fontSize: "13px",
-              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              fontSize: "12px",
+              fontWeight: "600",
+              marginBottom: "20px",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
             }}
           >
-            {m.name || "Unnamed Model"}
-          </button>
-        ))}
+            <i className="bi bi-check-circle-fill text-success" style={{ fontSize: "14px" }}></i>
+            <span>{statusMsg}</span>
+          </div>
+        )}
 
-        <button
-          type="button"
-          onClick={handleAddModel}
+        {/* Top Summary Metric Cards */}
+        <section className="summary-strip">
+          <div className="summary-item">
+            <span>Base Models</span>
+            <strong>{stats.totalModels}</strong>
+            <small>Active machine lines</small>
+          </div>
+          <div className="summary-item">
+            <span>Assembly Steps</span>
+            <strong>{stats.totalSteps}</strong>
+            <small>Active for {activeModel?.name}</small>
+          </div>
+          <div className="summary-item">
+            <span>Modular Options</span>
+            <strong>{stats.totalOptions}</strong>
+            <small>Selectable components</small>
+          </div>
+        </section>
+
+        {/* Model Tabs Bar */}
+        <div
           style={{
-            padding: "8px 14px",
-            borderRadius: "6px",
-            border: "1px dashed #94a3b8",
-            background: "#f8fafc",
-            color: "#475569",
-            fontWeight: 600,
-            fontSize: "12px",
-            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+            marginBottom: "20px",
+            flexWrap: "wrap",
+            borderBottom: "1px solid #ebebe8",
+            paddingBottom: "14px",
           }}
         >
-          <i className="bi bi-plus-lg"></i> Add Model
-        </button>
-      </div>
-
-      {activeModel && (
-        <div style={{ display: "grid", gap: "24px" }}>
-          {/* Active Model Overview Card */}
-          <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "20px", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", borderBottom: "1px solid #f1f5f9", paddingBottom: "10px" }}>
-              <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#0f172a" }}>
-                Model Details: {activeModel.name}
-              </h3>
-              <button
-                type="button"
-                onClick={() => handleDeleteModel(activeModelIdx)}
-                style={{ background: "none", border: "none", color: "#dc2626", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}
-              >
-                <i className="bi bi-trash3"></i> Delete Model
-              </button>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", alignItems: "flex-end" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
-                  Model Display Name
-                </label>
-                <input
-                  type="text"
-                  value={activeModel.name}
-                  onChange={(e) => handleUpdateModel("name", e.target.value)}
-                  style={{ width: "100%", padding: "7px 10px", fontSize: "13px", border: "1px solid #cbd5e1", borderRadius: "4px" }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
-                  Model ID (Unique key)
-                </label>
-                <input
-                  type="text"
-                  value={activeModel.id}
-                  onChange={(e) => handleUpdateModel("id", e.target.value.replace(/\s+/g, ""))}
-                  style={{ width: "100%", padding: "7px 10px", fontSize: "13px", border: "1px solid #cbd5e1", borderRadius: "4px" }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
-                  Description
-                </label>
-                <input
-                  type="text"
-                  value={activeModel.description || ""}
-                  onChange={(e) => handleUpdateModel("description", e.target.value)}
-                  style={{ width: "100%", padding: "7px 10px", fontSize: "13px", border: "1px solid #cbd5e1", borderRadius: "4px" }}
-                />
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                {activeModel.image && (
-                  <img
-                    src={activeModel.image}
-                    alt={activeModel.name}
-                    style={{ width: "42px", height: "42px", objectFit: "contain", border: "1px solid #e2e8f0", borderRadius: "4px" }}
-                  />
-                )}
-                <label className="button button-outline" style={{ fontSize: "11px", cursor: "pointer", margin: 0, padding: "7px 12px" }}>
-                  <i className="bi bi-image"></i> Change Model Photo
-                  <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleUploadModelImage} />
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* Steps & Options Configuration */}
-          <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "20px", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", borderBottom: "1px solid #f1f5f9", paddingBottom: "10px" }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#0f172a" }}>
-                  Configurator Steps ({activeModel.steps?.length || 0})
-                </h3>
-                <small style={{ color: "#64748b", fontSize: "12px" }}>
-                  Customer walks through these steps in sequence. The first option in each step is selected by default.
-                </small>
-              </div>
-
-              <button
-                type="button"
-                className="button button-lime"
-                onClick={handleAddStep}
-                style={{ fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "6px" }}
-              >
-                <i className="bi bi-plus-circle"></i> Add Step
-              </button>
-            </div>
-
-            <div style={{ display: "grid", gap: "20px" }}>
-              {activeModel.steps?.map((step, si) => (
-                <div
-                  key={step.id || si}
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ fontSize: "11px", fontWeight: "700", color: "#85867f", textTransform: "uppercase", marginRight: "4px" }}>
+              Active Model:
+            </span>
+            {config.models?.map((m, idx) => {
+              const isSelected = idx === activeModelIdx;
+              return (
+                <button
+                  key={m.id || idx}
+                  type="button"
+                  onClick={() => setActiveModelIdx(idx)}
+                  className={isSelected ? "btn-accent" : "btn-subtle"}
                   style={{
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "8px",
-                    padding: "16px",
+                    height: "36px",
+                    padding: "0 14px",
+                    fontSize: "12px",
+                    fontWeight: 600,
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "8px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: "1 1 300px" }}>
-                      <strong style={{ fontSize: "12px", color: "#475569" }}>STEP {si + 1}:</strong>
-                      <input
-                        type="text"
-                        value={step.name}
-                        onChange={(e) => handleUpdateStep(si, "name", e.target.value)}
-                        placeholder="Step title (e.g. 1. Hose system)"
-                        style={{ flex: 1, padding: "5px 8px", fontSize: "12px", fontWeight: "600", border: "1px solid #cbd5e1", borderRadius: "4px" }}
-                      />
-                    </div>
+                  <i className="bi bi-box-seam"></i>
+                  {m.name || "Unnamed"}
+                  <span
+                    style={{
+                      marginLeft: "6px",
+                      background: isSelected ? "rgba(255,255,255,0.25)" : "#ecece8",
+                      color: isSelected ? "#fff" : "#62635d",
+                      padding: "1px 6px",
+                      borderRadius: "10px",
+                      fontSize: "9px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {m.id}
+                  </span>
+                </button>
+              );
+            })}
 
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      <button
-                        type="button"
-                        onClick={() => handleAddOption(si)}
-                        className="button button-outline"
-                        style={{ fontSize: "10px", padding: "4px 8px", height: "auto" }}
-                      >
-                        <i className="bi bi-plus"></i> Add Option
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteStep(si)}
-                        style={{ background: "none", border: "none", color: "#dc2626", fontSize: "11px", cursor: "pointer" }}
-                      >
-                        Delete Step
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Options List */}
-                  <div style={{ display: "grid", gap: "10px" }}>
-                    {step.options?.map((opt, oi) => (
-                      <div
-                        key={opt.id || oi}
-                        style={{
-                          background: "#ffffff",
-                          border: "1px solid #e2e8f0",
-                          borderRadius: "6px",
-                          padding: "12px",
-                        }}
-                      >
-                        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 100px auto auto auto", gap: "10px", alignItems: "center" }}>
-                          <div>
-                            <label style={{ display: "block", fontSize: "10px", color: "#64748b" }}>Part Name</label>
-                            <input
-                              type="text"
-                              value={opt.name}
-                              onChange={(e) => handleUpdateOption(si, oi, "name", e.target.value)}
-                              style={{ width: "100%", padding: "4px 6px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "3px" }}
-                            />
-                          </div>
-
-                          <div>
-                            <label style={{ display: "block", fontSize: "10px", color: "#64748b" }}>ID (Stable key)</label>
-                            <input
-                              type="text"
-                              value={opt.id}
-                              onChange={(e) => handleUpdateOption(si, oi, "id", e.target.value.replace(/\s+/g, ""))}
-                              style={{ width: "100%", padding: "4px 6px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "3px" }}
-                            />
-                          </div>
-
-                          <div>
-                            <label style={{ display: "block", fontSize: "10px", color: "#64748b" }}>Price (€)</label>
-                            <input
-                              type="number"
-                              value={opt.price || 0}
-                              onChange={(e) => handleUpdateOption(si, oi, "price", Number(e.target.value) || 0)}
-                              style={{ width: "100%", padding: "4px 6px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "3px" }}
-                            />
-                          </div>
-
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            {opt.partImage ? (
-                              <img
-                                src={opt.partImage}
-                                alt={opt.name}
-                                style={{ width: "32px", height: "32px", objectFit: "contain", border: "1px solid #e2e8f0", borderRadius: "3px" }}
-                              />
-                            ) : (
-                              <div style={{ width: "32px", height: "32px", background: "#f1f5f9", display: "grid", placeItems: "center", fontSize: "9px", color: "#94a3b8" }}>
-                                N/A
-                              </div>
-                            )}
-                            <label style={{ fontSize: "10px", color: "#2563eb", cursor: "pointer", textDecoration: "underline", margin: 0 }}>
-                              Photo
-                              <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleUploadPartImage(si, oi, e)} />
-                            </label>
-                          </div>
-
-                          <div style={{ display: "flex", gap: "4px" }}>
-                            <button
-                              type="button"
-                              disabled={oi === 0}
-                              onClick={() => handleMoveOption(si, oi, -1)}
-                              style={{ width: "24px", height: "24px", border: "1px solid #cbd5e1", background: "#fff", cursor: "pointer", borderRadius: "3px", fontSize: "11px" }}
-                            >
-                              ↑
-                            </button>
-                            <button
-                              type="button"
-                              disabled={oi === (step.options.length - 1)}
-                              onClick={() => handleMoveOption(si, oi, 1)}
-                              style={{ width: "24px", height: "24px", border: "1px solid #cbd5e1", background: "#fff", cursor: "pointer", borderRadius: "3px", fontSize: "11px" }}
-                            >
-                              ↓
-                            </button>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteOption(si, oi)}
-                            style={{ background: "none", border: "none", color: "#dc2626", fontSize: "14px", cursor: "pointer" }}
-                            title="Delete option"
-                          >
-                            &times;
-                          </button>
-                        </div>
-
-                        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "10px", marginTop: "8px" }}>
-                          <div>
-                            <input
-                              type="text"
-                              value={opt.description || ""}
-                              onChange={(e) => handleUpdateOption(si, oi, "description", e.target.value)}
-                              placeholder="Description or engineering specifications"
-                              style={{ width: "100%", padding: "4px 6px", fontSize: "11px", border: "1px solid #e2e8f0", borderRadius: "3px" }}
-                            />
-                          </div>
-                          <div>
-                            <input
-                              type="text"
-                              value={(opt.requires || []).join(", ")}
-                              onChange={(e) =>
-                                handleUpdateOption(
-                                  si,
-                                  oi,
-                                  "requires",
-                                  e.target.value.split(",").map((s) => s.trim()).filter(Boolean)
-                                )
-                              }
-                              placeholder="Requires IDs (e.g. h2, S30SemiAutomatic)"
-                              style={{ width: "100%", padding: "4px 6px", fontSize: "11px", border: "1px solid #e2e8f0", borderRadius: "3px" }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <button
+              type="button"
+              onClick={handleAddModel}
+              className="btn-subtle"
+              style={{
+                height: "36px",
+                padding: "0 12px",
+                borderStyle: "dashed",
+                color: "#65665f",
+              }}
+            >
+              <i className="bi bi-plus-lg"></i> Add New Model
+            </button>
           </div>
 
-          {/* Combination Images Overview */}
-          <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "20px", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", borderBottom: "1px solid #f1f5f9", paddingBottom: "10px" }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#0f172a" }}>
-                  Combination Build Images ({Object.keys(config.combinationImages || {}).length} configured)
-                </h3>
-                <small style={{ color: "#64748b", fontSize: "12px" }}>
-                  These are the live 3D assembly renders shown on the customer page for each combination of selected parts.
-                </small>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", maxHeight: "240px", overflowY: "auto", padding: "10px", background: "#f8fafc", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
-              {Object.keys(config.combinationImages || {}).map((key) => (
-                <div
-                  key={key}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    background: "#ffffff",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "4px",
-                    padding: "4px 8px",
-                    fontSize: "11px",
-                  }}
-                >
-                  <img
-                    src={config.combinationImages[key]}
-                    alt={key}
-                    style={{ width: "24px", height: "24px", objectFit: "contain" }}
-                  />
-                  <span style={{ fontFamily: "monospace", color: "#334155" }}>{key}</span>
-                </div>
-              ))}
-            </div>
+          <div style={{ display: "flex", gap: "6px" }}>
+            <button
+              type="button"
+              className={activeTab === "steps" ? "btn-accent" : "btn-subtle"}
+              onClick={() => setActiveTab("steps")}
+              style={{ height: "34px", padding: "0 12px", fontSize: "11px" }}
+            >
+              <i className="bi bi-sliders"></i> Steps &amp; Parts
+            </button>
+            <button
+              type="button"
+              className={activeTab === "renders" ? "btn-accent" : "btn-subtle"}
+              onClick={() => setActiveTab("renders")}
+              style={{ height: "34px", padding: "0 12px", fontSize: "11px" }}
+            >
+              <i className="bi bi-bounding-box-circles"></i> 3D Build Renders ({stats.totalRenders})
+            </button>
           </div>
         </div>
-      )}
 
-      <Footer />
+        {activeModel && (
+          <div style={{ display: "grid", gap: "22px" }}>
+            {/* Model Profile Panel */}
+            <section className="form-panel" style={{ padding: "20px 24px" }}>
+              <div className="form-section-heading" style={{ marginBottom: "16px", paddingBottom: "12px" }}>
+                <div>
+                  <span className="form-kicker">MODEL SPECIFICATIONS</span>
+                  <h2>
+                    <i className="bi bi-cpu" style={{ color: "var(--accent)" }}></i>
+                    {activeModel.name} Platform Details
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteModel(activeModelIdx)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#b84c2d",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <i className="bi bi-trash3"></i> Delete Model
+                </button>
+              </div>
+
+              <div className="form-grid">
+                <div className="form-field">
+                  <label>Model Display Name</label>
+                  <input
+                    type="text"
+                    value={activeModel.name}
+                    onChange={(e) => handleUpdateModel("name", e.target.value)}
+                    placeholder="e.g. VRX2 or VRX5"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>Model ID (Unique lookup key)</label>
+                  <input
+                    type="text"
+                    value={activeModel.id}
+                    onChange={(e) => handleUpdateModel("id", e.target.value.replace(/\s+/g, ""))}
+                    placeholder="e.g. 2ton or 5ton"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>Machine Class Description</label>
+                  <input
+                    type="text"
+                    value={activeModel.description || ""}
+                    onChange={(e) => handleUpdateModel("description", e.target.value)}
+                    placeholder="e.g. For machines up to ~5 ton"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>Base Model Photo</label>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", minHeight: "42px" }}>
+                    {activeModel.image ? (
+                      <img
+                        src={activeModel.image}
+                        alt={activeModel.name}
+                        style={{
+                          width: "48px",
+                          height: "42px",
+                          objectFit: "contain",
+                          border: "1px solid #e2e2de",
+                          borderRadius: "4px",
+                          background: "#fafaf9",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: "48px",
+                          height: "42px",
+                          background: "#f1f0ec",
+                          borderRadius: "4px",
+                          display: "grid",
+                          placeItems: "center",
+                          fontSize: "10px",
+                          color: "#999a93",
+                        }}
+                      >
+                        None
+                      </div>
+                    )}
+                    <label
+                      className="btn-subtle"
+                      style={{ height: "36px", padding: "0 12px", cursor: "pointer", margin: 0, fontSize: "11px" }}
+                    >
+                      <i className="bi bi-image"></i> Upload Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        onChange={handleUploadModelImage}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* TAB 1: STEPS & OPTIONS CONFIGURATION */}
+            {activeTab === "steps" && (
+              <section className="form-panel" style={{ padding: "20px 24px" }}>
+                <div className="form-section-heading" style={{ marginBottom: "18px", paddingBottom: "12px" }}>
+                  <div>
+                    <span className="form-kicker">STEP BY STEP COMPONENT STAGES</span>
+                    <h2>
+                      <i className="bi bi-sliders" style={{ color: "var(--accent)" }}></i>
+                      Configurator Stages ({activeModel.steps?.length || 0})
+                    </h2>
+                    <p style={{ margin: "4px 0 0", color: "#85867f", fontSize: "11px" }}>
+                      Customers navigate through each step in sequence. The top option is selected by default.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-accent"
+                    onClick={handleAddStep}
+                    style={{ height: "34px", fontSize: "11px" }}
+                  >
+                    <i className="bi bi-plus-lg"></i> Add New Step
+                  </button>
+                </div>
+
+                <div style={{ display: "grid", gap: "20px" }}>
+                  {activeModel.steps?.map((step, si) => (
+                    <div
+                      key={step.id || si}
+                      style={{
+                        background: "#fbfbfa",
+                        border: "1px solid #e9e9e5",
+                        borderRadius: "8px",
+                        padding: "16px 18px",
+                      }}
+                    >
+                      {/* Step Header */}
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: "14px",
+                          flexWrap: "wrap",
+                          gap: "10px",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: "1 1 360px" }}>
+                          <span
+                            style={{
+                              background: "var(--accent)",
+                              color: "#fff",
+                              fontWeight: 700,
+                              fontSize: "10px",
+                              padding: "4px 8px",
+                              borderRadius: "4px",
+                              letterSpacing: "0.5px",
+                            }}
+                          >
+                            STEP {si + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={step.name}
+                            onChange={(e) => handleUpdateStep(si, "name", e.target.value)}
+                            placeholder="Step Title (e.g. 1. Hose system)"
+                            style={{
+                              flex: 1,
+                              height: "36px",
+                              padding: "0 12px",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                              border: "1px solid #e2e2de",
+                              borderRadius: "4px",
+                              background: "#fff",
+                            }}
+                          />
+                        </div>
+
+                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                          <button
+                            type="button"
+                            onClick={() => handleAddOption(si)}
+                            className="btn-subtle"
+                            style={{ height: "32px", fontSize: "11px", padding: "0 10px" }}
+                          >
+                            <i className="bi bi-plus-circle"></i> Add Part Option
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteStep(si)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#b84c2d",
+                              fontSize: "11px",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Delete Step
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Options Table for this Step */}
+                      <div className="table-panel" style={{ border: "1px solid #ebebe8" }}>
+                        <table className="data-table" style={{ width: "100%", tableLayout: "auto" }}>
+                          <thead>
+                            <tr>
+                              <th style={{ width: "54px" }}>PHOTO</th>
+                              <th style={{ minWidth: "160px" }}>PART NAME</th>
+                              <th style={{ width: "140px" }}>PART ID</th>
+                              <th style={{ width: "110px" }}>PRICE (€)</th>
+                              <th style={{ minWidth: "180px" }}>REQUIREMENTS (REQUIRES)</th>
+                              <th style={{ width: "70px", textAlign: "center" }}>ORDER</th>
+                              <th style={{ width: "50px", textAlign: "center" }}>ACTION</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {step.options?.map((opt, oi) => (
+                              <tr key={opt.id || oi}>
+                                <td>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                    {opt.partImage ? (
+                                      <img
+                                        src={opt.partImage}
+                                        alt={opt.name}
+                                        style={{
+                                          width: "36px",
+                                          height: "34px",
+                                          objectFit: "contain",
+                                          border: "1px solid #e5e5e1",
+                                          borderRadius: "4px",
+                                          background: "#fff",
+                                        }}
+                                      />
+                                    ) : (
+                                      <div
+                                        style={{
+                                          width: "36px",
+                                          height: "34px",
+                                          background: "#f1f0ec",
+                                          borderRadius: "4px",
+                                          display: "grid",
+                                          placeItems: "center",
+                                          fontSize: "9px",
+                                          color: "#999a93",
+                                        }}
+                                      >
+                                        N/A
+                                      </div>
+                                    )}
+                                    <label
+                                      style={{
+                                        cursor: "pointer",
+                                        color: "var(--accent)",
+                                        fontSize: "11px",
+                                        margin: 0,
+                                      }}
+                                      title="Upload part picture"
+                                    >
+                                      <i className="bi bi-camera"></i>
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        style={{ display: "none" }}
+                                        onChange={(e) => handleUploadPartImage(si, oi, e)}
+                                      />
+                                    </label>
+                                  </div>
+                                </td>
+
+                                <td>
+                                  <input
+                                    type="text"
+                                    value={opt.name}
+                                    onChange={(e) => handleUpdateOption(si, oi, "name", e.target.value)}
+                                    style={{
+                                      width: "100%",
+                                      height: "32px",
+                                      padding: "4px 8px",
+                                      fontSize: "11px",
+                                      fontWeight: 600,
+                                      border: "1px solid #e2e2de",
+                                      borderRadius: "4px",
+                                    }}
+                                  />
+                                  <input
+                                    type="text"
+                                    value={opt.description || ""}
+                                    onChange={(e) => handleUpdateOption(si, oi, "description", e.target.value)}
+                                    placeholder="Component engineering description..."
+                                    style={{
+                                      width: "100%",
+                                      height: "26px",
+                                      padding: "2px 8px",
+                                      fontSize: "10px",
+                                      color: "#777871",
+                                      border: "1px solid #ebebe8",
+                                      borderRadius: "3px",
+                                      marginTop: "4px",
+                                    }}
+                                  />
+                                </td>
+
+                                <td>
+                                  <input
+                                    type="text"
+                                    value={opt.id}
+                                    onChange={(e) => handleUpdateOption(si, oi, "id", e.target.value.replace(/\s+/g, ""))}
+                                    style={{
+                                      width: "100%",
+                                      height: "32px",
+                                      padding: "4px 8px",
+                                      fontSize: "11px",
+                                      fontFamily: "monospace",
+                                      border: "1px solid #e2e2de",
+                                      borderRadius: "4px",
+                                    }}
+                                  />
+                                </td>
+
+                                <td>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                    <span style={{ color: "#85867f", fontSize: "11px" }}>€</span>
+                                    <input
+                                      type="number"
+                                      value={opt.price || 0}
+                                      onChange={(e) => handleUpdateOption(si, oi, "price", Number(e.target.value) || 0)}
+                                      style={{
+                                        width: "75px",
+                                        height: "32px",
+                                        padding: "4px 6px",
+                                        fontSize: "11px",
+                                        border: "1px solid #e2e2de",
+                                        borderRadius: "4px",
+                                      }}
+                                    />
+                                  </div>
+                                </td>
+
+                                <td>
+                                  <input
+                                    type="text"
+                                    value={(opt.requires || []).join(", ")}
+                                    onChange={(e) =>
+                                      handleUpdateOption(
+                                        si,
+                                        oi,
+                                        "requires",
+                                        e.target.value.split(",").map((s) => s.trim()).filter(Boolean)
+                                      )
+                                    }
+                                    placeholder="Comma separated IDs (e.g. h2, S30)"
+                                    style={{
+                                      width: "100%",
+                                      height: "32px",
+                                      padding: "4px 8px",
+                                      fontSize: "10px",
+                                      border: "1px solid #e2e2de",
+                                      borderRadius: "4px",
+                                    }}
+                                  />
+                                  <small style={{ color: "#999a93", fontSize: "9px", display: "block", marginTop: "2px" }}>
+                                    Requires any matching option ID to unlock
+                                  </small>
+                                </td>
+
+                                <td style={{ textAlign: "center" }}>
+                                  <div style={{ display: "inline-flex", gap: "2px" }}>
+                                    <button
+                                      type="button"
+                                      disabled={oi === 0}
+                                      onClick={() => handleMoveOption(si, oi, -1)}
+                                      className="table-action"
+                                      style={{ width: "24px", height: "24px", opacity: oi === 0 ? 0.3 : 1 }}
+                                      title="Move option up"
+                                    >
+                                      <i className="bi bi-chevron-up" style={{ fontSize: "10px" }}></i>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={oi === (step.options.length - 1)}
+                                      onClick={() => handleMoveOption(si, oi, 1)}
+                                      className="table-action"
+                                      style={{ width: "24px", height: "24px", opacity: oi === (step.options.length - 1) ? 0.3 : 1 }}
+                                      title="Move option down"
+                                    >
+                                      <i className="bi bi-chevron-down" style={{ fontSize: "10px" }}></i>
+                                    </button>
+                                  </div>
+                                </td>
+
+                                <td style={{ textAlign: "center" }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteOption(si, oi)}
+                                    className="table-action"
+                                    style={{ width: "26px", height: "26px", margin: "0 auto", color: "#b84c2d" }}
+                                    title="Delete this option"
+                                  >
+                                    <i className="bi bi-x-lg" style={{ fontSize: "11px" }}></i>
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* TAB 2: COMBINATION IMAGES BROWSER */}
+            {activeTab === "renders" && (
+              <section className="form-panel" style={{ padding: "20px 24px" }}>
+                <div className="form-section-heading" style={{ marginBottom: "16px", paddingBottom: "12px" }}>
+                  <div>
+                    <span className="form-kicker">LIVE VISUAL RENDERING MAPPING</span>
+                    <h2>
+                      <i className="bi bi-bounding-box-circles" style={{ color: "var(--accent)" }}></i>
+                      3D Combination Renders ({stats.totalRenders} Images Configured)
+                    </h2>
+                    <p style={{ margin: "4px 0 0", color: "#85867f", fontSize: "11px" }}>
+                      Each key corresponds to an assembled stage: <code>modelId|step1OptionId|step2OptionId...</code>
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                    gap: "14px",
+                    maxHeight: "540px",
+                    overflowY: "auto",
+                    padding: "14px",
+                    background: "#fbfbfa",
+                    border: "1px solid #ebebe8",
+                    borderRadius: "8px",
+                  }}
+                >
+                  {Object.keys(config.combinationImages || {}).map((key) => {
+                    const imgUrl = config.combinationImages[key];
+                    return (
+                      <div
+                        key={key}
+                        style={{
+                          background: "#ffffff",
+                          border: "1px solid #e8e8e4",
+                          borderRadius: "6px",
+                          padding: "10px 12px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+                        }}
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={key}
+                          style={{
+                            width: "60px",
+                            height: "54px",
+                            objectFit: "contain",
+                            border: "1px solid #f0f0ed",
+                            borderRadius: "4px",
+                            background: "#fafaf9",
+                            flexShrink: 0,
+                          }}
+                        />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <span
+                            style={{
+                              display: "block",
+                              fontFamily: "monospace",
+                              fontSize: "10px",
+                              fontWeight: 600,
+                              color: "#30312c",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                            title={key}
+                          >
+                            {key}
+                          </span>
+                          <small style={{ color: "#85867f", fontSize: "9px" }}>
+                            {key.split("|").length} stages combined
+                          </small>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
+
+        <Footer />
+      </div>
     </AdminLayout>
   );
 };
