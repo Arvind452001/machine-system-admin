@@ -530,10 +530,28 @@ const LegalContent = () => {
             color: "#6b7280",
           }}
         >
-          <div>
-            <strong style={{ color: "#111827" }}>Route:</strong>{" "}
-            <code>api/v1/content/{activeSlug}</code>
-          </div>
+          {activePageObj && (
+            <div>
+              <strong style={{ color: "#111827" }}>Page URL:</strong>{" "}
+              <a
+                href={`http://localhost:5173${activePageObj.clientPath}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: "#c94f2d",
+                  textDecoration: "none",
+                  fontWeight: 600,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+                title="View live page on public site"
+              >
+                <span>{activePageObj.clientPath}</span>
+                <i className="bi bi-box-arrow-up-right" style={{ fontSize: "0.75rem" }}></i>
+              </a>
+            </div>
+          )}
           <div>
             <strong style={{ color: "#111827" }}>Type:</strong>{" "}
             <span>
