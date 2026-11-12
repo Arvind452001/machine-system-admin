@@ -857,23 +857,23 @@ const TiltRotatorAdmin = () => {
                       </div>
 
                       {/* Options Table for this Step */}
-                      <div className="table-panel" style={{ border: "1px solid #ebebe8" }}>
-                        <table className="data-table" style={{ width: "100%", tableLayout: "auto" }}>
+                      <div className="table-panel" style={{ border: "1px solid #ebebe8", overflowX: "auto" }}>
+                        <table className="data-table" style={{ width: "100%", minWidth: "960px", tableLayout: "fixed" }}>
                           <thead>
                             <tr>
-                              <th style={{ width: "64px" }}>PHOTO</th>
-                              <th style={{ minWidth: "160px" }}>PART NAME</th>
-                              <th style={{ width: "140px" }}>PART ID</th>
-                              <th style={{ width: "110px" }}>PRICE (€)</th>
-                              <th style={{ minWidth: "180px" }}>REQUIREMENTS (REQUIRES)</th>
-                              <th style={{ width: "70px", textAlign: "center" }}>ORDER</th>
-                              <th style={{ width: "50px", textAlign: "center" }}>ACTION</th>
+                              <th style={{ width: "75px", minWidth: "75px" }}>PHOTO</th>
+                              <th style={{ width: "260px", minWidth: "260px" }}>PART NAME &amp; DESCRIPTION</th>
+                              <th style={{ width: "125px", minWidth: "125px" }}>PART ID</th>
+                              <th style={{ width: "110px", minWidth: "110px" }}>PRICE (€)</th>
+                              <th style={{ width: "250px", minWidth: "250px" }}>REQUIREMENTS (REQUIRES)</th>
+                              <th style={{ width: "70px", minWidth: "70px", textAlign: "center" }}>ORDER</th>
+                              <th style={{ width: "60px", minWidth: "60px", textAlign: "center" }}>ACTION</th>
                             </tr>
                           </thead>
                           <tbody>
                             {step.options?.map((opt, oi) => (
                               <tr key={opt.id || oi}>
-                                <td>
+                                <td style={{ height: "auto", padding: "12px 10px", verticalAlign: "top", whiteSpace: "normal" }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                     {opt.partImage ? (
                                       <div style={{ position: "relative", display: "inline-block" }}>
@@ -954,7 +954,7 @@ const TiltRotatorAdmin = () => {
                                   </div>
                                 </td>
 
-                                <td>
+                                <td style={{ height: "auto", padding: "12px 10px", verticalAlign: "top", whiteSpace: "normal" }}>
                                   <input
                                     type="text"
                                     value={opt.name}
@@ -967,6 +967,7 @@ const TiltRotatorAdmin = () => {
                                       fontWeight: 600,
                                       border: "1px solid #e2e2de",
                                       borderRadius: "4px",
+                                      boxSizing: "border-box",
                                     }}
                                   />
                                   <input
@@ -983,11 +984,12 @@ const TiltRotatorAdmin = () => {
                                       border: "1px solid #ebebe8",
                                       borderRadius: "3px",
                                       marginTop: "4px",
+                                      boxSizing: "border-box",
                                     }}
                                   />
                                 </td>
 
-                                <td>
+                                <td style={{ height: "auto", padding: "12px 10px", verticalAlign: "top", whiteSpace: "normal" }}>
                                   <input
                                     type="text"
                                     value={opt.id}
@@ -1000,11 +1002,12 @@ const TiltRotatorAdmin = () => {
                                       fontFamily: "monospace",
                                       border: "1px solid #e2e2de",
                                       borderRadius: "4px",
+                                      boxSizing: "border-box",
                                     }}
                                   />
                                 </td>
 
-                                <td>
+                                <td style={{ height: "auto", padding: "12px 10px", verticalAlign: "top", whiteSpace: "normal" }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                                     <span style={{ color: "#85867f", fontSize: "11px" }}>€</span>
                                     <input
@@ -1012,18 +1015,19 @@ const TiltRotatorAdmin = () => {
                                       value={opt.price || 0}
                                       onChange={(e) => handleUpdateOption(si, oi, "price", Number(e.target.value) || 0)}
                                       style={{
-                                        width: "75px",
+                                        width: "100%",
                                         height: "32px",
                                         padding: "4px 6px",
                                         fontSize: "11px",
                                         border: "1px solid #e2e2de",
                                         borderRadius: "4px",
+                                        boxSizing: "border-box",
                                       }}
                                     />
                                   </div>
                                 </td>
 
-                                <td>
+                                <td style={{ height: "auto", padding: "12px 10px", verticalAlign: "top", whiteSpace: "normal" }}>
                                   <input
                                     type="text"
                                     value={(opt.requires || []).join(", ")}
@@ -1043,6 +1047,7 @@ const TiltRotatorAdmin = () => {
                                       fontSize: "10px",
                                       border: "1px solid #e2e2de",
                                       borderRadius: "4px",
+                                      boxSizing: "border-box",
                                     }}
                                   />
                                   <small style={{ color: "#999a93", fontSize: "9px", display: "block", marginTop: "2px" }}>
@@ -1050,7 +1055,7 @@ const TiltRotatorAdmin = () => {
                                   </small>
                                 </td>
 
-                                <td style={{ textAlign: "center" }}>
+                                <td style={{ height: "auto", padding: "12px 10px", verticalAlign: "top", whiteSpace: "normal", textAlign: "center" }}>
                                   <div style={{ display: "inline-flex", gap: "2px" }}>
                                     <button
                                       type="button"
@@ -1075,7 +1080,7 @@ const TiltRotatorAdmin = () => {
                                   </div>
                                 </td>
 
-                                <td style={{ textAlign: "center" }}>
+                                <td style={{ height: "auto", padding: "12px 10px", verticalAlign: "top", whiteSpace: "normal", textAlign: "center" }}>
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteOption(si, oi)}
