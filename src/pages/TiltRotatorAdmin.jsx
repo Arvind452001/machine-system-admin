@@ -5,6 +5,37 @@ import defaultTiltData from "../data/tiltRotatorData.json";
 
 const STORAGE_KEY = "tiltRotatorConfig_v2";
 
+// Helper to compress uploaded images via canvas to ensure fast preview & prevent localStorage quota overflow
+const shrinkDataUrl = (dataUrl, maxEdge = 600, quality = 0.8) => {
+  return new Promise((resolve) => {
+    if (!dataUrl || typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) {
+      resolve(dataUrl);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      const longest = Math.max(img.width, img.height) || 1;
+      const scale = Math.min(1, maxEdge / longest);
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      try {
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      } catch {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+};
+
 const TiltRotatorAdmin = () => {
   const fileInputRef = useRef(null);
   const [config, setConfig] = useState(() => {
@@ -27,14 +58,17 @@ const TiltRotatorAdmin = () => {
   };
 
   const saveConfig = (newConfig) => {
+    // 1. Optimistic state update so UI and previews reflect IMMEDIATELY
+    setConfig(newConfig);
+
+    // 2. Persist to localStorage safely
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newConfig));
       window.dispatchEvent(new Event("storage"));
-      setConfig(newConfig);
       flash("Configuration saved successfully!");
     } catch (err) {
-      console.error("Save error:", err);
-      flash("Error saving: Browser storage might be full.");
+      console.warn("Storage quota warning:", err);
+      flash("Saved in memory! (Browser storage is near capacity)");
     }
   };
 
@@ -189,20 +223,34 @@ const TiltRotatorAdmin = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      handleUpdateOption(stepIdx, optIdx, "partImage", ev.target.result);
+    reader.onload = async (ev) => {
+      try {
+        const compressed = await shrinkDataUrl(ev.target.result, 400, 0.8);
+        handleUpdateOption(stepIdx, optIdx, "partImage", compressed);
+        flash("Part image updated!");
+      } catch (err) {
+        handleUpdateOption(stepIdx, optIdx, "partImage", ev.target.result);
+      }
     };
     reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   const handleUploadModelImage = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      handleUpdateModel("image", ev.target.result);
+    reader.onload = async (ev) => {
+      try {
+        const compressed = await shrinkDataUrl(ev.target.result, 600, 0.8);
+        handleUpdateModel("image", compressed);
+        flash("Model photo updated successfully!");
+      } catch (err) {
+        handleUpdateModel("image", ev.target.result);
+      }
     };
     reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   // Import / Export
@@ -253,12 +301,12 @@ const TiltRotatorAdmin = () => {
     <AdminLayout breadcrumb={breadcrumb} title="Tilt-Rotator Catalog">
       <div className="page-wrap">
         {/* Content Header matching MACHINE Systems Design */}
-        <section className="content-header">
+        <section className="content-header" style={{ alignItems: "center", marginBottom: "20px" }}>
           <div>
             <div className="eyebrow">
               <span className="eyebrow-line"></span>3D CONFIGURATOR CMS
             </div>
-            <h1>
+            <h1 style={{ margin: "4px 0" }}>
               Tilt-Rotator <span>Catalog &amp; Rules</span>
             </h1>
             <p className="welcome-subtitle">
@@ -266,32 +314,79 @@ const TiltRotatorAdmin = () => {
             </p>
           </div>
 
-          <div className="header-actions">
+          <div
+            className="header-actions"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              flexWrap: "wrap",
+              justifyContent: "flex-end",
+            }}
+          >
             <a
               href="http://localhost:5173/tilt-rotator"
               target="_blank"
               rel="noopener noreferrer"
               className="btn-accent"
+              style={{
+                height: "37px",
+                padding: "0 14px",
+                whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "7px",
+                fontSize: "11px",
+                fontWeight: 600,
+                textDecoration: "none",
+                flexShrink: 0,
+              }}
               title="Open public configurator preview"
             >
-              <i className="bi bi-box-arrow-up-right"></i> Live Customer Preview
+              <i className="bi bi-box-arrow-up-right" style={{ fontSize: "12px" }}></i>
+              <span>Customer Preview</span>
             </a>
 
             <button
               type="button"
               className="btn-subtle"
               onClick={handleExport}
+              style={{
+                height: "37px",
+                padding: "0 13px",
+                whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "7px",
+                fontSize: "11px",
+                fontWeight: 600,
+                flexShrink: 0,
+              }}
               title="Download backup JSON"
             >
-              <i className="bi bi-download"></i> Export JSON
+              <i className="bi bi-download" style={{ fontSize: "12px" }}></i>
+              <span>Export JSON</span>
             </button>
 
             <label
               className="btn-subtle"
-              style={{ cursor: "pointer", margin: 0 }}
+              style={{
+                height: "37px",
+                padding: "0 13px",
+                cursor: "pointer",
+                margin: 0,
+                whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "7px",
+                fontSize: "11px",
+                fontWeight: 600,
+                flexShrink: 0,
+              }}
               title="Import JSON catalog"
             >
-              <i className="bi bi-upload"></i> Import JSON
+              <i className="bi bi-upload" style={{ fontSize: "12px" }}></i>
+              <span>Import JSON</span>
               <input
                 type="file"
                 ref={fileInputRef}
@@ -305,10 +400,22 @@ const TiltRotatorAdmin = () => {
               type="button"
               className="btn-subtle"
               onClick={handleResetDefaults}
-              style={{ color: "#c94f2d" }}
+              style={{
+                height: "37px",
+                padding: "0 13px",
+                whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "7px",
+                fontSize: "11px",
+                fontWeight: 600,
+                color: "#c94f2d",
+                flexShrink: 0,
+              }}
               title="Restore demo dataset"
             >
-              <i className="bi bi-arrow-counterclockwise"></i> Reset Demo
+              <i className="bi bi-arrow-counterclockwise" style={{ fontSize: "12px" }}></i>
+              <span>Reset Demo</span>
             </button>
           </div>
         </section>
@@ -385,13 +492,17 @@ const TiltRotatorAdmin = () => {
                     padding: "0 14px",
                     fontSize: "12px",
                     fontWeight: 600,
+                    whiteSpace: "nowrap",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
                   }}
                 >
                   <i className="bi bi-box-seam"></i>
                   {m.name || "Unnamed"}
                   <span
                     style={{
-                      marginLeft: "6px",
+                      marginLeft: "4px",
                       background: isSelected ? "rgba(255,255,255,0.25)" : "#ecece8",
                       color: isSelected ? "#fff" : "#62635d",
                       padding: "1px 6px",
@@ -415,6 +526,10 @@ const TiltRotatorAdmin = () => {
                 padding: "0 12px",
                 borderStyle: "dashed",
                 color: "#65665f",
+                whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
               }}
             >
               <i className="bi bi-plus-lg"></i> Add New Model
@@ -426,7 +541,7 @@ const TiltRotatorAdmin = () => {
               type="button"
               className={activeTab === "steps" ? "btn-accent" : "btn-subtle"}
               onClick={() => setActiveTab("steps")}
-              style={{ height: "34px", padding: "0 12px", fontSize: "11px" }}
+              style={{ height: "34px", padding: "0 12px", fontSize: "11px", whiteSpace: "nowrap" }}
             >
               <i className="bi bi-sliders"></i> Steps &amp; Parts
             </button>
@@ -434,7 +549,7 @@ const TiltRotatorAdmin = () => {
               type="button"
               className={activeTab === "renders" ? "btn-accent" : "btn-subtle"}
               onClick={() => setActiveTab("renders")}
-              style={{ height: "34px", padding: "0 12px", fontSize: "11px" }}
+              style={{ height: "34px", padding: "0 12px", fontSize: "11px", whiteSpace: "nowrap" }}
             >
               <i className="bi bi-bounding-box-circles"></i> 3D Build Renders ({stats.totalRenders})
             </button>
@@ -505,41 +620,80 @@ const TiltRotatorAdmin = () => {
 
                 <div className="form-field">
                   <label>Base Model Photo</label>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px", minHeight: "42px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "14px", minHeight: "56px" }}>
                     {activeModel.image ? (
-                      <img
-                        src={activeModel.image}
-                        alt={activeModel.name}
-                        style={{
-                          width: "48px",
-                          height: "42px",
-                          objectFit: "contain",
-                          border: "1px solid #e2e2de",
-                          borderRadius: "4px",
-                          background: "#fafaf9",
-                        }}
-                      />
+                      <div style={{ position: "relative", display: "inline-block" }}>
+                        <img
+                          src={activeModel.image}
+                          alt={activeModel.name}
+                          style={{
+                            width: "74px",
+                            height: "54px",
+                            objectFit: "contain",
+                            border: "1px solid #dcdfdc",
+                            borderRadius: "5px",
+                            background: "#ffffff",
+                            padding: "3px",
+                            boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateModel("image", "")}
+                          style={{
+                            position: "absolute",
+                            top: "-6px",
+                            right: "-6px",
+                            width: "18px",
+                            height: "18px",
+                            borderRadius: "50%",
+                            background: "#dc2626",
+                            color: "#ffffff",
+                            border: "none",
+                            fontSize: "11px",
+                            cursor: "pointer",
+                            display: "grid",
+                            placeItems: "center",
+                            lineHeight: 1,
+                          }}
+                          title="Remove photo"
+                        >
+                          &times;
+                        </button>
+                      </div>
                     ) : (
                       <div
                         style={{
-                          width: "48px",
-                          height: "42px",
+                          width: "74px",
+                          height: "54px",
                           background: "#f1f0ec",
-                          borderRadius: "4px",
+                          borderRadius: "5px",
+                          border: "1px dashed #c8c8c2",
                           display: "grid",
                           placeItems: "center",
                           fontSize: "10px",
                           color: "#999a93",
+                          fontWeight: 500,
                         }}
                       >
-                        None
+                        No Photo
                       </div>
                     )}
                     <label
-                      className="btn-subtle"
-                      style={{ height: "36px", padding: "0 12px", cursor: "pointer", margin: 0, fontSize: "11px" }}
+                      className="btn-accent"
+                      style={{
+                        height: "36px",
+                        padding: "0 14px",
+                        cursor: "pointer",
+                        margin: 0,
+                        fontSize: "11px",
+                        whiteSpace: "nowrap",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
                     >
-                      <i className="bi bi-image"></i> Upload Photo
+                      <i className="bi bi-upload"></i> {activeModel.image ? "Change Photo" : "Upload Photo"}
                       <input
                         type="file"
                         accept="image/*"
@@ -571,7 +725,7 @@ const TiltRotatorAdmin = () => {
                     type="button"
                     className="btn-accent"
                     onClick={handleAddStep}
-                    style={{ height: "34px", fontSize: "11px" }}
+                    style={{ height: "34px", fontSize: "11px", whiteSpace: "nowrap" }}
                   >
                     <i className="bi bi-plus-lg"></i> Add New Step
                   </button>
@@ -636,7 +790,7 @@ const TiltRotatorAdmin = () => {
                             type="button"
                             onClick={() => handleAddOption(si)}
                             className="btn-subtle"
-                            style={{ height: "32px", fontSize: "11px", padding: "0 10px" }}
+                            style={{ height: "32px", fontSize: "11px", padding: "0 10px", whiteSpace: "nowrap" }}
                           >
                             <i className="bi bi-plus-circle"></i> Add Part Option
                           </button>
@@ -650,6 +804,7 @@ const TiltRotatorAdmin = () => {
                               fontSize: "11px",
                               fontWeight: 600,
                               cursor: "pointer",
+                              whiteSpace: "nowrap",
                             }}
                           >
                             Delete Step
@@ -662,7 +817,7 @@ const TiltRotatorAdmin = () => {
                         <table className="data-table" style={{ width: "100%", tableLayout: "auto" }}>
                           <thead>
                             <tr>
-                              <th style={{ width: "54px" }}>PHOTO</th>
+                              <th style={{ width: "64px" }}>PHOTO</th>
                               <th style={{ minWidth: "160px" }}>PART NAME</th>
                               <th style={{ width: "140px" }}>PART ID</th>
                               <th style={{ width: "110px" }}>PRICE (€)</th>
@@ -677,40 +832,70 @@ const TiltRotatorAdmin = () => {
                                 <td>
                                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                     {opt.partImage ? (
-                                      <img
-                                        src={opt.partImage}
-                                        alt={opt.name}
-                                        style={{
-                                          width: "36px",
-                                          height: "34px",
-                                          objectFit: "contain",
-                                          border: "1px solid #e5e5e1",
-                                          borderRadius: "4px",
-                                          background: "#fff",
-                                        }}
-                                      />
+                                      <div style={{ position: "relative", display: "inline-block" }}>
+                                        <img
+                                          src={opt.partImage}
+                                          alt={opt.name}
+                                          style={{
+                                            width: "38px",
+                                            height: "36px",
+                                            objectFit: "contain",
+                                            border: "1px solid #e5e5e1",
+                                            borderRadius: "4px",
+                                            background: "#fff",
+                                            padding: "2px",
+                                          }}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => handleUpdateOption(si, oi, "partImage", "")}
+                                          style={{
+                                            position: "absolute",
+                                            top: "-4px",
+                                            right: "-4px",
+                                            width: "14px",
+                                            height: "14px",
+                                            borderRadius: "50%",
+                                            background: "#dc2626",
+                                            color: "#fff",
+                                            border: "none",
+                                            fontSize: "9px",
+                                            cursor: "pointer",
+                                            display: "grid",
+                                            placeItems: "center",
+                                            lineHeight: 1,
+                                          }}
+                                          title="Remove photo"
+                                        >
+                                          &times;
+                                        </button>
+                                      </div>
                                     ) : (
                                       <div
                                         style={{
-                                          width: "36px",
-                                          height: "34px",
+                                          width: "38px",
+                                          height: "36px",
                                           background: "#f1f0ec",
                                           borderRadius: "4px",
+                                          border: "1px dashed #d5d5d0",
                                           display: "grid",
                                           placeItems: "center",
                                           fontSize: "9px",
                                           color: "#999a93",
                                         }}
                                       >
-                                        N/A
+                                        None
                                       </div>
                                     )}
                                     <label
+                                      className="btn-subtle"
                                       style={{
                                         cursor: "pointer",
-                                        color: "var(--accent)",
-                                        fontSize: "11px",
+                                        height: "28px",
+                                        padding: "0 7px",
+                                        fontSize: "10px",
                                         margin: 0,
+                                        whiteSpace: "nowrap",
                                       }}
                                       title="Upload part picture"
                                     >
@@ -962,3 +1147,4 @@ const TiltRotatorAdmin = () => {
 };
 
 export default TiltRotatorAdmin;
+
