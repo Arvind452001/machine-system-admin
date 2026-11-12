@@ -1035,7 +1035,7 @@ const TiltRotatorAdmin = () => {
                                         e.target.value.split(",").map((s) => s.trim()).filter(Boolean)
                                       )
                                     }
-                                    placeholder="Comma separated IDs (e.g. h2, S30)"
+                                    placeholder="Optional (e.g. h2, S30) — leave blank if none"
                                     style={{
                                       width: "100%",
                                       height: "32px",
@@ -1046,7 +1046,7 @@ const TiltRotatorAdmin = () => {
                                     }}
                                   />
                                   <small style={{ color: "#999a93", fontSize: "9px", display: "block", marginTop: "2px" }}>
-                                    Requires any matching option ID to unlock
+                                    Leave blank if always available. Or enter option ID needed to unlock.
                                   </small>
                                 </td>
 
