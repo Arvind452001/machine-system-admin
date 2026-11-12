@@ -1,7 +1,8 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import AdminLayout from "../components/AdminLayout";
 import Footer from "../components/Footer";
 import defaultTiltData from "../data/tiltRotatorData.json";
+import { contentApi } from "../api/contentApi";
 
 const STORAGE_KEY = "tiltRotatorConfig_v2";
 
@@ -52,6 +53,36 @@ const TiltRotatorAdmin = () => {
   const [statusMsg, setStatusMsg] = useState("");
   const [activeTab, setActiveTab] = useState("steps"); // "steps" | "renders"
 
+  // Fetch live synchronized configuration from backend database
+  useEffect(() => {
+    let mounted = true;
+    contentApi
+      .getContentBySlug("tilt-rotator-config")
+      .then((res) => {
+        if (!mounted) return;
+        const bodyStr = res?.data?.body || res?.body;
+        if (bodyStr) {
+          try {
+            const parsed = typeof bodyStr === "string" ? JSON.parse(bodyStr) : bodyStr;
+            if (parsed?.models && Array.isArray(parsed.models) && parsed.models.length > 0) {
+              setConfig(parsed);
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+              } catch {}
+            }
+          } catch (e) {
+            console.warn("Could not parse remote config:", e);
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch remote tilt-rotator config:", err);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const flash = (msg) => {
     setStatusMsg(msg);
     setTimeout(() => setStatusMsg(""), 3000);
@@ -61,7 +92,7 @@ const TiltRotatorAdmin = () => {
     // 1. Optimistic state update so UI and previews reflect IMMEDIATELY
     setConfig(newConfig);
 
-    // 2. Persist to localStorage safely
+    // 2. Persist to localStorage safely for instant offline access
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newConfig));
       window.dispatchEvent(new Event("storage"));
@@ -70,6 +101,19 @@ const TiltRotatorAdmin = () => {
       console.warn("Storage quota warning:", err);
       flash("Saved in memory! (Browser storage is near capacity)");
     }
+
+    // 3. Persist to live MongoDB database so Customer Configurator reflects changes immediately
+    contentApi
+      .updateContent("tilt-rotator-config", {
+        title: "Tilt-Rotator 3D Configurator Catalog",
+        body: JSON.stringify(newConfig),
+      })
+      .then(() => {
+        flash("Saved and synced to live customer portal!");
+      })
+      .catch((err) => {
+        console.warn("Failed to sync config to live backend:", err);
+      });
   };
 
   const activeModel = useMemo(() => {
