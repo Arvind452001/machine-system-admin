@@ -23,11 +23,11 @@ const shrinkDataUrl = (dataUrl, maxEdge = 600, quality = 0.8) => {
       canvas.width = w;
       canvas.height = h;
       const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, w, h);
+      // Preserve alpha transparency for PNGs and transparent renders
+      ctx.clearRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
       try {
-        resolve(canvas.toDataURL("image/jpeg", quality));
+        resolve(canvas.toDataURL("image/png"));
       } catch {
         resolve(dataUrl);
       }
