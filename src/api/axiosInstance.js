@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || "https://node.aitechnotech.in/machine";
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || "https://technorizen.co.in/machine";
 
 const normalizedBaseUrl = rawBaseUrl.replace(/\/+$/, "");
 const BASE_URL = normalizedBaseUrl.endsWith("/api/v1")
