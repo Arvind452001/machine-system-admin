@@ -50,7 +50,7 @@ const LegacyHtmlRedirect = () => {
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/machine/admin">
       <AuthProvider>
         <ScrollToTop />
         <Routes>
